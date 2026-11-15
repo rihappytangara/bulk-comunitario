@@ -61,3 +61,6 @@ input::placeholder{color:#a0adb8}
 .site-footer{text-align:center;color:#8a99a5;font-size:10px;padding:14px 20px}.site-footer p{margin:4px}.site-footer strong{color:#5d6d79}
 .hidden-frame,.hidden-form,.honeypot{position:absolute!important;left:-9999px!important;width:1px!important;height:1px!important;opacity:0!important}
 @media(max-width:600px){.container{width:min(100% - 20px,790px);margin-top:14px}.card{padding:18px;border-radius:15px}.intro{min-height:155px}.intro-symbol{font-size:65px;padding:0 4px}.form-grid{grid-template-columns:1fr}.site-header{height:72px;padding:0 16px}.site-header h1{font-size:18px}.section-heading{gap:10px}.rules ul{font-size:12px}}
+
+
+.search-hint { display:block; margin:8px 0 12px; color:#687383; font-size:.82rem; line-height:1.4; }
