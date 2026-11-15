@@ -2,7 +2,7 @@
   "use strict";
   const cfg = window.BULK_CONFIG || {};
   const API = "https://api.tcgdex.net/v2/";
-  const state = { withdraw: [], deposit: [], searchTimers: {}, requestId: null };
+  const state = { withdraw: [], deposit: [], searchTimers: {}, requestId: null, submitTimer: null };
   const $ = (id) => document.getElementById(id);
 
   const form = $("movement-form");
@@ -211,11 +211,23 @@
     $("transport-payload").value = JSON.stringify(payload);
     $("transport-form").action = cfg.APPS_SCRIPT_URL;
     $("transport-form").submit();
+
+    // Não deixa a interface presa indefinidamente caso o Apps Script não
+    // devolva a confirmação via postMessage.
+    clearTimeout(state.submitTimer);
+    state.submitTimer = setTimeout(() => {
+      if (!state.requestId) return;
+      submitButton.disabled = false;
+      submitButton.querySelector("span").textContent = "Registrar movimentação";
+      showMessage("Não recebemos a confirmação do Google Sheets. A movimentação pode ou não ter sido registrada. Antes de enviar novamente, confira a planilha ou fale com a equipe da loja.");
+      state.requestId = null;
+    }, 30000);
   });
 
   window.addEventListener("message", event => {
     const data = event.data;
     if (!data || data.type !== "BULK_MOVEMENT_RESPONSE" || data.requestId !== state.requestId) return;
+    clearTimeout(state.submitTimer);
     submitButton.disabled = false;
     submitButton.querySelector("span").textContent = "Registrar movimentação";
     if (data.ok) {
