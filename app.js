@@ -35,9 +35,9 @@
   }
 
   function normalizeLocalId(value) {
-    const raw = String(value || "").trim().toUpperCase().replace(/\\s+/g, "");
+    const raw = String(value || "").trim().toUpperCase().replace(/\s+/g, "");
     const id = raw.split("/")[0];
-    return /^\\d+$/.test(id) ? String(Number(id)) : id;
+    return /^\d+$/.test(id) ? String(Number(id)) : id;
   }
 
   async function searchCards(nameQuery, numberQuery) {
