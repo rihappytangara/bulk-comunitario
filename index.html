@@ -70,10 +70,17 @@
         <div class="limit-number"><span id="withdraw-count">0</span><small>/ 7</small></div>
       </div>
       <div class="search-wrap">
-        <label class="field">
-          <span>Pesquisar carta para retirar</span>
-          <input id="withdraw-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard, Busca..." aria-label="Pesquisar carta para retirar">
-        </label>
+        <div class="form-grid">
+          <label class="field">
+            <span>Nome da carta</span>
+            <input id="withdraw-name-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard..." aria-label="Nome da carta para retirar">
+          </label>
+          <label class="field">
+            <span>Número da carta</span>
+            <input id="withdraw-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para retirar">
+          </label>
+        </div>
+        <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
         <div id="withdraw-results" class="search-results" aria-live="polite"></div>
       </div>
       <div id="withdraw-selected" class="selected-list empty-state">Nenhuma carta selecionada para retirada.</div>
@@ -86,10 +93,17 @@
         </div>
       </div>
       <div class="search-wrap">
-        <label class="field">
-          <span>Pesquisar carta para deixar</span>
-          <input id="deposit-search" type="search" autocomplete="off" placeholder="Ex.: Bulbasaur, Energia, Treinador..." aria-label="Pesquisar carta para deixar">
-        </label>
+        <div class="form-grid">
+          <label class="field">
+            <span>Nome da carta</span>
+            <input id="deposit-name-search" type="search" autocomplete="off" placeholder="Ex.: Bulbasaur, Energia, Treinador..." aria-label="Nome da carta para deixar">
+          </label>
+          <label class="field">
+            <span>Número da carta</span>
+            <input id="deposit-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para deixar">
+          </label>
+        </div>
+        <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
         <div id="deposit-results" class="search-results" aria-live="polite"></div>
       </div>
       <div id="deposit-selected" class="selected-list empty-state">Nenhuma carta selecionada para entrada.</div>
