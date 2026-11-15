@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0878c9">
+  <title>Bulk Comunitário | Ri Happy Tangará</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="brand-mark" aria-hidden="true">RH</div>
+    <div>
+      <p class="eyebrow">RI HAPPY TANGARÁ</p>
+      <h1>Bulk Comunitário</h1>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="intro card">
+      <div class="intro-copy">
+        <span class="tag">COMUNIDADE POKÉMON</span>
+        <h2>Compartilhar cartas fortalece a comunidade.</h2>
+        <p>Registre as cartas que você está deixando e retirando do Bulk Comunitário.</p>
+      </div>
+      <div class="intro-symbol" aria-hidden="true">✦</div>
+    </section>
+
+    <section class="rules card">
+      <h2>Antes de começar</h2>
+      <ul>
+        <li>É permitido retirar até <strong>7 cartas por semana</strong>.</li>
+        <li>Confira a condição das cartas e respeite os critérios de qualidade definidos pela loja.</li>
+        <li>O registro é automático e representa a declaração do participante sobre a movimentação realizada.</li>
+        <li>As cartas deixadas e retiradas serão registradas no histórico da comunidade.</li>
+      </ul>
+    </section>
+
+    <form id="movement-form" class="card" novalidate>
+      <div class="section-heading">
+        <span class="step">01</span>
+        <div>
+          <h2>Seus dados</h2>
+          <p>Use sempre o mesmo telefone para que o sistema reconheça seu histórico.</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        <label class="field">
+          <span>Nome completo *</span>
+          <input id="participant-name" name="name" autocomplete="name" maxlength="100" placeholder="Como podemos identificar você?" required>
+        </label>
+        <label class="field">
+          <span>WhatsApp / telefone *</span>
+          <input id="participant-phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="20" placeholder="(65) 99999-9999" required>
+        </label>
+      </div>
+
+      <div class="section-heading movement-title">
+        <span class="step">02</span>
+        <div>
+          <h2>Cartas que estou retirando</h2>
+          <p>Pesquise pelo nome do Pokémon ou da carta. O limite semanal é de 7 unidades.</p>
+        </div>
+      </div>
+      <div class="limit-panel">
+        <div>
+          <strong>Selecionadas nesta movimentação</strong>
+          <small>O total da semana será validado no envio</small>
+        </div>
+        <div class="limit-number"><span id="withdraw-count">0</span><small>/ 7</small></div>
+      </div>
+      <div class="search-wrap">
+        <label class="field">
+          <span>Pesquisar carta para retirar</span>
+          <input id="withdraw-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard, Busca..." aria-label="Pesquisar carta para retirar">
+        </label>
+        <div id="withdraw-results" class="search-results" aria-live="polite"></div>
+      </div>
+      <div id="withdraw-selected" class="selected-list empty-state">Nenhuma carta selecionada para retirada.</div>
+
+      <div class="section-heading movement-title">
+        <span class="step">03</span>
+        <div>
+          <h2>Cartas que estou deixando</h2>
+          <p>Registre as cartas que você está colocando no Bulk Comunitário. Não há limite de entrada.</p>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <label class="field">
+          <span>Pesquisar carta para deixar</span>
+          <input id="deposit-search" type="search" autocomplete="off" placeholder="Ex.: Bulbasaur, Energia, Treinador..." aria-label="Pesquisar carta para deixar">
+        </label>
+        <div id="deposit-results" class="search-results" aria-live="polite"></div>
+      </div>
+      <div id="deposit-selected" class="selected-list empty-state">Nenhuma carta selecionada para entrada.</div>
+
+      <div class="declaration">
+        <label class="check-row">
+          <input id="declaration" type="checkbox" required>
+          <span>Declaro que as cartas que estou deixando respeitam as regras de conservação e qualidade do Bulk Comunitário e que as informações desta movimentação são verdadeiras. *</span>
+        </label>
+      </div>
+
+      <div class="form-footer">
+        <p id="form-message" class="form-message" role="status" aria-live="polite"></p>
+        <button id="submit-button" class="primary-button" type="submit">
+          <span>Registrar movimentação</span><span aria-hidden="true">→</span>
+        </button>
+        <p class="privacy-note">Seus dados serão utilizados pela Ri Happy Tangará para identificar e organizar as movimentações do Bulk Comunitário.</p>
+      </div>
+      <input type="text" id="website" name="website" class="honeypot" tabindex="-1" autocomplete="off" aria-hidden="true">
+    </form>
+
+    <section id="success-panel" class="card success-panel" hidden>
+      <div class="success-icon">✓</div>
+      <h2>Movimentação registrada</h2>
+      <p>Seu registro foi enviado automaticamente.</p>
+      <div class="protocol-box">
+        <small>NÚMERO DO PROTOCOLO</small>
+        <strong id="protocol-number">—</strong>
+      </div>
+      <p class="success-note">Guarde o protocolo para eventual consulta com a equipe da loja.</p>
+      <button id="new-movement" class="secondary-button" type="button">Registrar outra movimentação</button>
+    </section>
+
+    <footer class="site-footer">
+      <p><strong>Bulk Comunitário · Ri Happy Tangará</strong></p>
+      <p>Catálogo de cartas fornecido pela TCGdex. Projeto comunitário independente, sem afiliação com Nintendo ou The Pokémon Company.</p>
+    </footer>
+  </main>
+
+  <iframe name="submission-frame" id="submission-frame" title="Envio de movimentação" class="hidden-frame"></iframe>
+  <form id="transport-form" method="post" target="submission-frame" class="hidden-form">
+    <input type="hidden" name="payload" id="transport-payload">
+  </form>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
