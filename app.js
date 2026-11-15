@@ -34,16 +34,31 @@
     return card.set?.name || card.set?.id || "Coleção não informada";
   }
 
-  async function searchCards(query) {
-    const trimmed = query.trim();
-    if (trimmed.length < 2) return [];
-    for (const lang of (cfg.TCGDEX_LANGUAGES || ["pt","en"])) {
+  function normalizeLocalId(value) {
+    const raw = String(value || "").trim().toUpperCase().replace(/\\s+/g, "");
+    const id = raw.split("/")[0];
+    return /^\\d+$/.test(id) ? String(Number(id)) : id;
+  }
+
+  async function searchCards(nameQuery, numberQuery) {
+    const name = String(nameQuery || "").trim();
+    const number = String(numberQuery || "").trim();
+    const localId = normalizeLocalId(number);
+    if ((!name || name.length < 2) && !localId) return [];
+
+    for (const lang of (cfg.TCGDEX_LANGUAGES || ["pt", "en"])) {
       try {
-        const url = `${API}${lang}/cards?name=${encodeURIComponent(trimmed)}&pagination:page=1&pagination:itemsPerPage=24`;
-        const response = await fetch(url);
+        const params = new URLSearchParams();
+        if (name) params.set("name", name);
+        if (localId) params.set("localId", localId);
+        params.set("pagination:page", "1");
+        params.set("pagination:itemsPerPage", "100");
+        const response = await fetch(`${API}${lang}/cards?${params.toString()}`);
         if (!response.ok) continue;
         const cards = await response.json();
-        if (Array.isArray(cards) && cards.length) return cards.slice(0, 24).map(c => ({...c, lang}));
+        if (!Array.isArray(cards)) continue;
+        const matches = cards.filter(card => !localId || normalizeLocalId(card.localId) === localId);
+        if (matches.length) return matches.slice(0, 40).map(card => ({...card, lang}));
       } catch (err) { /* tenta o próximo idioma */ }
     }
     return [];
@@ -71,7 +86,7 @@
         <img src="${escapeHtml(cardImage(card))}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
         <div class="result-info">
           <strong>${escapeHtml(card.name)}</strong>
-          <small>Carta nº ${escapeHtml(card.localId || "—")} · ID ${escapeHtml(card.id)}</small>
+          <small>Nº ${escapeHtml(card.localId || "—")} · ${escapeHtml(cardSetLabel(card))}</small>
         </div>
         <button class="add-button" type="button" data-add="${i}">Adicionar</button>
       </div>`).join("");
@@ -79,25 +94,31 @@
       button.addEventListener("click", async () => {
         const card = await getCardDetails(cards[Number(button.dataset.add)]);
         addCard(type, card);
-        $(type + "-search").value = "";
+        $(type + "-name-search").value = "";
+        $(type + "-number-search").value = "";
         container.innerHTML = "";
       });
     });
   }
 
   function setupSearch(type) {
-    const input = $(type + "-search");
-    input.addEventListener("input", () => {
+    const nameInput = $(type + "-name-search");
+    const numberInput = $(type + "-number-search");
+    const target = $(type + "-results");
+    const runSearch = () => {
       clearTimeout(state.searchTimers[type]);
-      const q = input.value.trim();
-      const target = $(type + "-results");
-      if (q.length < 2) { target.innerHTML = ""; return; }
+      const name = nameInput.value.trim();
+      const number = numberInput.value.trim();
+      if (!name && !number) { target.innerHTML = ""; return; }
+      if (name && name.length < 2 && !number) { target.innerHTML = ""; return; }
       target.innerHTML = '<div class="empty-state">Pesquisando no catálogo Pokémon...</div>';
       state.searchTimers[type] = setTimeout(async () => {
-        try { renderResults(type, await searchCards(q)); }
+        try { renderResults(type, await searchCards(name, number)); }
         catch { target.innerHTML = '<div class="empty-state">Não foi possível consultar o catálogo agora. Tente novamente.</div>'; }
       }, 350);
-    });
+    };
+    nameInput.addEventListener("input", runSearch);
+    numberInput.addEventListener("input", runSearch);
   }
 
   function addCard(type, card) {
@@ -212,6 +233,8 @@
     state.withdraw = []; state.deposit = []; state.requestId = null;
     renderSelected("withdraw"); renderSelected("deposit");
     $("withdraw-results").innerHTML = ""; $("deposit-results").innerHTML = "";
+    $("withdraw-name-search").value = ""; $("withdraw-number-search").value = "";
+    $("deposit-name-search").value = ""; $("deposit-number-search").value = "";
     $("success-panel").hidden = true; form.hidden = false; showMessage("");
     window.scrollTo({top:0,behavior:"smooth"});
   });
