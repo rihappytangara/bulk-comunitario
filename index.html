@@ -96,6 +96,20 @@
         </div>
         <div class="limit-number"><span id="withdraw-count">0</span><small>/ 7</small></div>
       </div>
+      <div class="stock-heading">
+        <div>
+          <h3>Cartas disponíveis para retirada</h3>
+          <p>Veja o que está disponível no estoque e selecione diretamente.</p>
+        </div>
+        <div class="stock-view-toggle" role="group" aria-label="Modo de visualização do estoque">
+          <button type="button" class="active" data-stock-view="grid">Miniaturas</button>
+          <button type="button" data-stock-view="list">Lista em texto</button>
+        </div>
+      </div>
+      <div id="withdraw-stock-catalog" class="stock-catalog" aria-live="polite">
+        <div class="empty-state">Carregando cartas disponíveis...</div>
+      </div>
+      <div class="stock-search-divider"><span>Ou pesquise uma carta específica</span></div>
       <div class="search-wrap">
         <div class="form-grid card-search-grid">
           <label class="field">
