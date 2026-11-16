@@ -273,17 +273,14 @@
     renderStockCatalog();
   }));
 
-  let stockScript = null;
-  let stockCallbackReceived = false;
+  let stockFrame = null;
   let stockLoadTimer = null;
 
   function handlePublicStock(data) {
-    stockCallbackReceived = true;
     clearTimeout(stockLoadTimer);
-
-    if (stockScript) {
-      stockScript.remove();
-      stockScript = null;
+    if (stockFrame) {
+      stockFrame.remove();
+      stockFrame = null;
     }
 
     if (data && data.ok === true && Array.isArray(data.stock)) {
@@ -300,8 +297,8 @@
       }));
       renderStockCatalog();
 
-      // Os detalhes e imagens são complementares: o catálogo em texto já fica
-      // disponível imediatamente, mesmo se a API TCGdex demorar no celular.
+      // Os detalhes e imagens são complementares. A lista básica da planilha
+      // aparece primeiro e não depende da TCGdex para funcionar.
       state.stockCards.forEach(async (base, index) => {
         try {
           const detail = await Promise.race([
@@ -319,20 +316,23 @@
           };
           renderStockCatalog();
         } catch (err) {
-          // Mantém os dados básicos da planilha se a TCGdex estiver indisponível.
+          // Mantém o registro básico da planilha.
         }
       });
     } else {
       state.stockReady = false;
-      $("withdraw-stock-catalog").innerHTML = '<div class="empty-state">A consulta ao estoque retornou uma resposta inválida. Atualize a página e tente novamente.</div>';
+      $("withdraw-stock-catalog").innerHTML = '<div class="empty-state">Não foi possível ler os dados do estoque. Atualize a página e tente novamente.</div>';
     }
   }
 
-  // O callback fica registrado no objeto window antes de inserir o script.
-  // Isso é importante para o JSONP redirecionado pelo Google Apps Script.
-  window.bulkStockCallback = function(data) {
+  // Recebe a resposta do HtmlService via postMessage. O identificador aleatório
+  // impede que respostas atrasadas de consultas anteriores sejam aproveitadas.
+  window.addEventListener("message", event => {
+    const data = event && event.data;
+    if (!data || data.type !== "BULK_STOCK_RESPONSE") return;
+    if (!state.stockRequestId || data.requestId !== state.stockRequestId) return;
     handlePublicStock(data);
-  };
+  });
 
   function loadPublicStock() {
     const container = $("withdraw-stock-catalog");
@@ -342,49 +342,37 @@
       return;
     }
 
+    clearTimeout(stockLoadTimer);
+    if (stockFrame) stockFrame.remove();
+    state.stockReady = false;
+    state.stockRequestId = `stock-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     container.innerHTML = '<div class="empty-state">Carregando cartas disponíveis...</div>';
-    stockCallbackReceived = false;
 
     try {
       const url = new URL(cfg.APPS_SCRIPT_URL);
       url.searchParams.set("action", "stock");
-      url.searchParams.set("callback", "bulkStockCallback");
-      url.searchParams.set("_", String(Date.now())); // evita resposta antiga em cache no Safari/iOS
+      url.searchParams.set("requestId", state.stockRequestId);
+      url.searchParams.set("_", String(Date.now()));
 
-      if (stockScript) stockScript.remove();
-      stockScript = document.createElement("script");
-      stockScript.type = "text/javascript";
-      stockScript.async = true;
-      stockScript.src = url.toString();
-      stockScript.onerror = () => {
-        clearTimeout(stockLoadTimer);
-        if (stockScript) stockScript.remove();
-        stockScript = null;
-        if (!stockCallbackReceived) {
-          container.innerHTML = '<div class="empty-state">Não foi possível conectar ao estoque. Verifique sua conexão e toque em atualizar a página.</div>';
-        }
-      };
-      stockScript.onload = () => {
-        // O carregamento do arquivo pode terminar sem executar o callback.
-        // Nesse caso, evita deixar o usuário preso em “Carregando”.
-        stockLoadTimer = setTimeout(() => {
-          if (!stockCallbackReceived) {
-            if (stockScript) stockScript.remove();
-            stockScript = null;
-            container.innerHTML = '<div class="empty-state">O servidor não confirmou o estoque. Atualize a página para tentar novamente.</div>';
-          }
-        }, 9000);
-      };
-      document.head.appendChild(stockScript);
+      stockFrame = document.createElement("iframe");
+      stockFrame.title = "Consulta de estoque";
+      stockFrame.setAttribute("aria-hidden", "true");
+      stockFrame.style.position = "absolute";
+      stockFrame.style.width = "1px";
+      stockFrame.style.height = "1px";
+      stockFrame.style.border = "0";
+      stockFrame.style.opacity = "0";
+      stockFrame.style.pointerEvents = "none";
+      stockFrame.src = url.toString();
+      document.body.appendChild(stockFrame);
 
-      // Fallback para navegadores que não disparam onload de forma consistente.
       stockLoadTimer = setTimeout(() => {
-        if (!stockCallbackReceived) {
-          if (stockScript) stockScript.remove();
-          stockScript = null;
-          container.innerHTML = '<div class="empty-state">Tempo esgotado ao carregar o estoque. Atualize a página para tentar novamente.</div>';
+        if (state.stockRequestId && !state.stockReady) {
+          if (stockFrame) stockFrame.remove();
+          stockFrame = null;
+          container.innerHTML = '<div class="empty-state">Não foi possível conectar ao estoque. Atualize a página e tente novamente.</div>';
         }
-      }, 15000);
+      }, 18000);
     } catch (error) {
       container.innerHTML = '<div class="empty-state">Não foi possível iniciar a consulta ao estoque. Atualize a página e tente novamente.</div>';
     }
