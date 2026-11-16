@@ -277,6 +277,7 @@
     submitButton.querySelector("span").textContent = "Registrar movimentação";
     if (data.ok) {
       $("protocol-number").textContent = data.protocol || "Registrado";
+      form.hidden = true;
       $("success-panel").hidden = false;
       window.scrollTo({top:0,behavior:"smooth"});
     } else {
