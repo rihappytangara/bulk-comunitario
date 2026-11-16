@@ -109,7 +109,9 @@
       <div id="withdraw-stock-catalog" class="stock-catalog" aria-live="polite">
         <div class="empty-state">Carregando cartas disponíveis...</div>
       </div>
-      <div class="stock-search-divider"><span>Ou pesquise uma carta específica</span></div>
+      <button type="button" id="toggle-withdraw-search" class="secondary-button stock-search-toggle" aria-expanded="false">Pesquisar carta específica</button>
+      <div id="withdraw-search-panel" hidden>
+      <div class="stock-search-divider"><span>Pesquisa no catálogo Pokémon</span></div>
       <div class="search-wrap">
         <div class="form-grid card-search-grid">
           <label class="field">
@@ -127,6 +129,7 @@
         </div>
         <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
         <div id="withdraw-results" class="search-results" aria-live="polite"></div>
+      </div>
       </div>
       <div id="withdraw-selected" class="selected-list empty-state">Nenhuma carta selecionada para retirada.</div>
 
