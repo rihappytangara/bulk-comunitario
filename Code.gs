@@ -24,12 +24,12 @@ function ensureSheet_(ss,name,headers){
  if(sh.getLastRow()===0){sh.appendRow(headers);sh.setFrozenRows(1);sh.getRange(1,1,1,headers.length).setFontWeight("bold").setBackground("#0878c9").setFontColor("#fff");}
 }
 function configureAdminPassword(){
- const p=SpreadsheetApp.getUi().prompt("Senha administrativa","Defina uma senha forte para o painel. Ela não será salva no GitHub.",SpreadsheetApp.getUi().ButtonSet.OK_CANCEL);
- if(p.getSelectedButton()!==SpreadsheetApp.getUi().Button.OK)return;
- const password=p.getResponseText();
- if(!password||password.length<12)throw new Error("Use uma senha com pelo menos 12 caracteres.");
+ // No editor do Apps Script, substitua temporariamente a senha abaixo,
+ // execute esta função uma vez e depois apague a senha literal do código.
+ const password="TROQUE_POR_UMA_SENHA_FORTE_DE_12_OU_MAIS_CARACTERES";
+ if(password.indexOf("TROQUE_POR_")===0||password.length<12)throw new Error("Edite a senha dentro de configureAdminPassword() antes de executar.");
  PropertiesService.getScriptProperties().setProperty(CONFIG.ADMIN_HASH,sha256_(password));
- SpreadsheetApp.getUi().alert("Senha administrativa configurada.");
+ Logger.log("Senha administrativa configurada. Remova a senha literal do código e salve.");
 }
 function doPost(e){
  let p={};try{p=JSON.parse((e&&e.parameter&&e.parameter.payload)||"{}");let r;
