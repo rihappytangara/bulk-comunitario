@@ -80,6 +80,8 @@ function adminApprove_(p){
   const vals=m.getRange(2,1,Math.max(0,last-1),9).getValues(),idx=vals.findIndex(r=>r[0]===p.protocol);if(idx<0)throw new Error("Protocolo não encontrado.");
   const row=idx+2;if(vals[idx][6]!=="Pendente")throw new Error("Esta solicitação já foi processada.");
   const det=d.getLastRow()>1?d.getRange(2,1,d.getLastRow()-1,7).getValues().filter(r=>r[0]===p.protocol):[];
+  const approvedThisWeek=getWithdrawalsThisWeek_(m,String(vals[idx][3]).replace(/\\D/g,""),new Date());
+  if(approvedThisWeek+Number(vals[idx][4]||0)>CONFIG.WEEKLY_LIMIT)throw new Error("Aprovação bloqueada: esta movimentação ultrapassaria o limite semanal de 7 cartas retiradas.");
   const stockRows=s.getLastRow()>1?s.getRange(2,1,s.getLastRow()-1,6).getValues():[];
   const map=new Map();stockRows.forEach((r,i)=>map.set(String(r[0]),{row:i+2,qty:Number(r[4])||0}));
   const withdrawals=det.filter(r=>r[1]==="Retirada"),deposits=det.filter(r=>r[1]==="Entrada");
