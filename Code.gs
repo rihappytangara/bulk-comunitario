@@ -57,6 +57,9 @@ function registerMovement_(p){
   const last=sh.getLastRow();if(last>1){const found=sh.getRange(2,1,last-1,1).getDisplayValues().flat().find(x=>x===requestId);if(found)return{ok:true,requestId,protocol:found,duplicate:true,status:"Pendente"};}
   const now=new Date(),used=getWithdrawalsThisWeek_(sh,phone,now);
   if(used+out>7)throw new Error("Limite semanal atingido. Já retirou "+used+" carta(s); saldo: "+Math.max(0,7-used)+".");
+  // A reserva é validada no servidor enquanto o ScriptLock está ativo.
+  // Assim, solicitações simultâneas não conseguem comprometer a mesma unidade.
+  validateWithdrawalAvailability_(ss,withdrawals);
   const protocol="BULK-"+Utilities.formatDate(now,CONFIG.TIMEZONE,"yyMMdd-HHmmss")+"-"+Utilities.getUuid().slice(0,4).toUpperCase();
   sh.appendRow([protocol,now,name,phone,out,inn,"Pendente",now,""]);
   const rows=[];withdrawals.forEach(c=>rows.push([protocol,"Retirada",c.id,c.name,c.setName,c.localId,c.quantity]));deposits.forEach(c=>rows.push([protocol,"Entrada",c.id,c.name,c.setName,c.localId,c.quantity]));
@@ -75,18 +78,47 @@ function adminLogin_(p){
  return{ok:true,token,expiresIn:21600};
 }
 function requireAdmin_(token){if(!token||CacheService.getScriptCache().get("bulk_admin_"+token)!=="1")throw new Error("Sessão expirada. Entre novamente.");}
-function publicStock_(){
- const ss=getSpreadsheet_(),sh=ss.getSheetByName("Estoque");
+function getPhysicalStockMap_(ss){
+ const sh=ss.getSheetByName("Estoque");
  if(!sh)throw new Error("A aba Estoque não foi encontrada.");
- const last=sh.getLastRow();if(last<=1)return{ok:true,stock:[]};
- const rows=sh.getRange(2,1,last-1,6).getValues(),byId=new Map();
- rows.forEach(r=>{
-  const id=String(r[0]||"").trim(),qty=Math.max(0,Number(r[4])||0);
-  if(!id)return;
-  const item=byId.get(id)||{id,name:String(r[1]||""),setName:String(r[2]||""),localId:String(r[3]||""),quantity:0};
-  item.quantity+=qty;byId.set(id,item);
+ const last=sh.getLastRow(),map=new Map();
+ if(last<=1)return map;
+ sh.getRange(2,1,last-1,6).getValues().forEach(r=>{
+  const id=String(r[0]||"").trim();if(!id)return;
+  const item=map.get(id)||{id,name:String(r[1]||""),setName:String(r[2]||""),localId:String(r[3]||""),quantity:0};
+  item.quantity+=Math.max(0,Number(r[4])||0);map.set(id,item);
  });
- return{ok:true,stock:Array.from(byId.values()).filter(x=>x.quantity>0)};
+ return map;
+}
+function getPendingReservationsMap_(ss){
+ const m=ss.getSheetByName("Movimentações"),d=ss.getSheetByName("Detalhes"),reserved=new Map();
+ if(!m||!d||m.getLastRow()<=1||d.getLastRow()<=1)return reserved;
+ const pending=new Set(m.getRange(2,1,m.getLastRow()-1,7).getValues()
+  .filter(r=>String(r[6])==="Pendente").map(r=>String(r[0])));
+ if(!pending.size)return reserved;
+ d.getRange(2,1,d.getLastRow()-1,7).getValues().forEach(r=>{
+  if(String(r[1])!=="Retirada"||!pending.has(String(r[0])))return;
+  const id=String(r[2]||"").trim(),qty=Math.max(0,Number(r[6])||0);
+  if(id&&qty)reserved.set(id,(reserved.get(id)||0)+qty);
+ });
+ return reserved;
+}
+function validateWithdrawalAvailability_(ss,withdrawals){
+ const physical=getPhysicalStockMap_(ss),reserved=getPendingReservationsMap_(ss),requested=new Map();
+ withdrawals.forEach(c=>requested.set(c.id,(requested.get(c.id)||0)+c.quantity));
+ requested.forEach((qty,id)=>{
+  const item=physical.get(id),onHand=item?item.quantity:0,held=reserved.get(id)||0,available=Math.max(0,onHand-held);
+  if(qty>available)throw new Error("Estoque insuficiente para "+(item?item.name:id)+". Disponível para novas solicitações: "+available+".");
+ });
+}
+function publicStock_(){
+ const ss=getSpreadsheet_(),physical=getPhysicalStockMap_(ss),reserved=getPendingReservationsMap_(ss);
+ const stock=[];
+ physical.forEach(item=>{
+  const available=Math.max(0,item.quantity-(reserved.get(item.id)||0));
+  if(available>0)stock.push({id:item.id,name:item.name,setName:item.setName,localId:item.localId,quantity:available});
+ });
+ return{ok:true,stock};
 }
 function adminList_(p){
  requireAdmin_(p.token);const ss=getSpreadsheet_(),m=ss.getSheetByName("Movimentações"),d=ss.getSheetByName("Detalhes"),s=ss.getSheetByName("Estoque");
