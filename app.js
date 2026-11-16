@@ -349,12 +349,38 @@
       if (data.ok && Array.isArray(data.stock)) {
         state.stockById = new Map(data.stock.map(item => [String(item.id), Number(item.quantity) || 0]));
         state.stockReady = true;
-        state.stockCards = await Promise.all(data.stock.map(async item => {
-          const base = { id: String(item.id), name: item.name, localId: item.localId || "", set: { name: item.setName || "" }, lang: "pt" };
-          const detail = await getCardDetails(base);
-          return { ...base, ...detail, id: String(item.id), name: detail.name || item.name, localId: detail.localId || item.localId || "", set: detail.set || base.set, stockQuantity: Number(item.quantity) || 0 };
+        // Exibe primeiro os dados da planilha: o catálogo textual não depende da API TCGdex.
+        state.stockCards = data.stock.map(item => ({
+          id: String(item.id),
+          name: String(item.name || item.id),
+          localId: String(item.localId || ""),
+          set: { name: String(item.setName || "") },
+          lang: "pt",
+          stockQuantity: Number(item.quantity) || 0
         }));
         renderStockCatalog();
+
+        // Enriquece as cartas com imagens e metadados em segundo plano.
+        state.stockCards.forEach(async (base, index) => {
+          try {
+            const detail = await Promise.race([
+              getCardDetails(base),
+              new Promise(resolve => setTimeout(() => resolve(base), 5000))
+            ]);
+            state.stockCards[index] = {
+              ...base,
+              ...detail,
+              id: base.id,
+              name: detail.name || base.name,
+              localId: detail.localId || base.localId,
+              set: detail.set || base.set,
+              stockQuantity: base.stockQuantity
+            };
+            renderStockCatalog();
+          } catch (err) {
+            // Mantém os dados textuais da planilha mesmo se a API falhar.
+          }
+        });
       } else {
         state.stockReady = false;
         $("withdraw-results").innerHTML = '<div class="empty-state">Não foi possível carregar o estoque. Atualize a página ou tente novamente mais tarde.</div>';
