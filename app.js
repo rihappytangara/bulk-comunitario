@@ -40,25 +40,66 @@
     return /^\d+$/.test(id) ? String(Number(id)) : id;
   }
 
-  async function searchCards(nameQuery, numberQuery) {
+  async function searchCards(nameQuery, collectionQuery, numberQuery) {
     const name = String(nameQuery || "").trim();
+    const collection = String(collectionQuery || "").trim();
     const number = String(numberQuery || "").trim();
     const localId = normalizeLocalId(number);
-    if ((!name || name.length < 2) && !localId) return [];
+    if ((!name || name.length < 2) && !collection && !localId) return [];
 
     for (const lang of (cfg.TCGDEX_LANGUAGES || ["pt", "en"])) {
       try {
-        const params = new URLSearchParams();
-        if (name) params.set("name", name);
-        if (localId) params.set("localId", localId);
-        params.set("pagination:page", "1");
-        params.set("pagination:itemsPerPage", "100");
-        const response = await fetch(`${API}${lang}/cards?${params.toString()}`);
-        if (!response.ok) continue;
-        const cards = await response.json();
-        if (!Array.isArray(cards)) continue;
-        const matches = cards.filter(card => !localId || normalizeLocalId(card.localId) === localId);
-        if (matches.length) return matches.slice(0, 40).map(card => ({...card, lang}));
+        let cards = [];
+
+        if (collection) {
+          // Primeiro localiza as coleções pelo nome; depois consulta as cartas
+          // de cada coleção, o que também contempla numerações promocionais.
+          const setParams = new URLSearchParams();
+          setParams.set("name", collection);
+          setParams.set("pagination:page", "1");
+          setParams.set("pagination:itemsPerPage", "30");
+          const setResponse = await fetch(`${API}${lang}/sets?${setParams.toString()}`);
+          if (!setResponse.ok) continue;
+          const sets = await setResponse.json();
+          if (!Array.isArray(sets) || !sets.length) continue;
+
+          const fullSets = await Promise.all(sets.slice(0, 15).map(async set => {
+            try {
+              const response = await fetch(`${API}${lang}/sets/${encodeURIComponent(set.id)}`);
+              return response.ok ? await response.json() : null;
+            } catch (err) { return null; }
+          }));
+
+          cards = fullSets.filter(Boolean).flatMap(set =>
+            (set.cards || []).map(card => ({
+              ...card,
+              set: { id: set.id, name: set.name },
+              lang
+            }))
+          );
+        } else {
+          const params = new URLSearchParams();
+          if (name) params.set("name", name);
+          if (localId) params.set("localId", localId);
+          params.set("pagination:page", "1");
+          params.set("pagination:itemsPerPage", "100");
+          const response = await fetch(`${API}${lang}/cards?${params.toString()}`);
+          if (!response.ok) continue;
+          const data = await response.json();
+          if (!Array.isArray(data)) continue;
+          cards = data.map(card => ({ ...card, lang }));
+        }
+
+        const normalizedCollection = collection.toLocaleLowerCase();
+        const normalizedName = name.toLocaleLowerCase();
+        const matches = cards.filter(card => {
+          const cardName = String(card.name || "").toLocaleLowerCase();
+          const setName = String(card.set?.name || "").toLocaleLowerCase();
+          return (!normalizedName || cardName.includes(normalizedName)) &&
+            (!localId || normalizeLocalId(card.localId) === localId) &&
+            (!normalizedCollection || setName.includes(normalizedCollection));
+        });
+        if (matches.length) return matches.slice(0, 40);
       } catch (err) { /* tenta o próximo idioma */ }
     }
     return [];
@@ -95,6 +136,7 @@
         const card = await getCardDetails(cards[Number(button.dataset.add)]);
         addCard(type, card);
         $(type + "-name-search").value = "";
+        $(type + "-collection-search").value = "";
         $(type + "-number-search").value = "";
         container.innerHTML = "";
       });
@@ -103,21 +145,24 @@
 
   function setupSearch(type) {
     const nameInput = $(type + "-name-search");
+    const collectionInput = $(type + "-collection-search");
     const numberInput = $(type + "-number-search");
     const target = $(type + "-results");
     const runSearch = () => {
       clearTimeout(state.searchTimers[type]);
       const name = nameInput.value.trim();
+      const collection = collectionInput.value.trim();
       const number = numberInput.value.trim();
-      if (!name && !number) { target.innerHTML = ""; return; }
-      if (name && name.length < 2 && !number) { target.innerHTML = ""; return; }
+      if (!name && !collection && !number) { target.innerHTML = ""; return; }
+      if (name && name.length < 2 && !collection && !number) { target.innerHTML = ""; return; }
       target.innerHTML = '<div class="empty-state">Pesquisando no catálogo Pokémon...</div>';
       state.searchTimers[type] = setTimeout(async () => {
-        try { renderResults(type, await searchCards(name, number)); }
+        try { renderResults(type, await searchCards(name, collection, number)); }
         catch { target.innerHTML = '<div class="empty-state">Não foi possível consultar o catálogo agora. Tente novamente.</div>'; }
       }, 350);
     };
     nameInput.addEventListener("input", runSearch);
+    collectionInput.addEventListener("input", runSearch);
     numberInput.addEventListener("input", runSearch);
   }
 
@@ -245,8 +290,8 @@
     state.withdraw = []; state.deposit = []; state.requestId = null;
     renderSelected("withdraw"); renderSelected("deposit");
     $("withdraw-results").innerHTML = ""; $("deposit-results").innerHTML = "";
-    $("withdraw-name-search").value = ""; $("withdraw-number-search").value = "";
-    $("deposit-name-search").value = ""; $("deposit-number-search").value = "";
+    $("withdraw-name-search").value = ""; $("withdraw-collection-search").value = ""; $("withdraw-number-search").value = "";
+    $("deposit-name-search").value = ""; $("deposit-collection-search").value = ""; $("deposit-number-search").value = "";
     $("success-panel").hidden = true; form.hidden = false; showMessage("");
     window.scrollTo({top:0,behavior:"smooth"});
   });
