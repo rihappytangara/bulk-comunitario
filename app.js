@@ -273,11 +273,54 @@
     renderStockCatalog();
   }));
 
+  function handlePublicStock(data) {
+    if (data && data.ok && Array.isArray(data.stock)) {
+      state.stockById = new Map(data.stock.map(item => [String(item.id), Number(item.quantity) || 0]));
+      state.stockReady = true;
+      state.stockCards = data.stock.map(item => ({
+        id: String(item.id),
+        name: String(item.name || item.id),
+        localId: String(item.localId || ""),
+        set: { name: String(item.setName || "") },
+        lang: "pt",
+        stockQuantity: Number(item.quantity) || 0
+      }));
+      renderStockCatalog();
+      state.stockCards.forEach(async (base, index) => {
+        try {
+          const detail = await Promise.race([
+            getCardDetails(base),
+            new Promise(resolve => setTimeout(() => resolve(base), 5000))
+          ]);
+          state.stockCards[index] = {
+            ...base, ...detail, id: base.id,
+            name: detail.name || base.name,
+            localId: detail.localId || base.localId,
+            set: detail.set || base.set,
+            stockQuantity: base.stockQuantity
+          };
+          renderStockCatalog();
+        } catch (err) {}
+      });
+    } else {
+      state.stockReady = false;
+      $("withdraw-stock-catalog").innerHTML = '<div class="empty-state">Não foi possível consultar o estoque. Tente novamente.</div>';
+    }
+  }
+
+  window.bulkStockCallback = handlePublicStock;
+
   function loadPublicStock() {
-    state.stockRequestId = "stock-" + Date.now();
-    $("transport-payload").value = JSON.stringify({ action: "stock", requestId: state.stockRequestId });
-    $("transport-form").action = cfg.APPS_SCRIPT_URL;
-    $("transport-form").submit();
+    const url = new URL(cfg.APPS_SCRIPT_URL);
+    url.searchParams.set("action", "stock");
+    url.searchParams.set("callback", "bulkStockCallback");
+    const script = document.createElement("script");
+    script.src = url.toString();
+    script.async = true;
+    script.onerror = () => {
+      $("withdraw-stock-catalog").innerHTML = '<div class="empty-state">Falha ao conectar ao estoque. Atualize a página para tentar novamente.</div>';
+    };
+    document.head.appendChild(script);
   }
 
   const searchToggle = $("toggle-withdraw-search");
@@ -344,49 +387,6 @@
   window.addEventListener("message", async event => {
     const data = event.data;
     if (!data || data.type !== "BULK_MOVEMENT_RESPONSE") return;
-    if (state.stockRequestId && data.requestId === state.stockRequestId) {
-      state.stockRequestId = null;
-      if (data.ok && Array.isArray(data.stock)) {
-        state.stockById = new Map(data.stock.map(item => [String(item.id), Number(item.quantity) || 0]));
-        state.stockReady = true;
-        // Exibe primeiro os dados da planilha: o catálogo textual não depende da API TCGdex.
-        state.stockCards = data.stock.map(item => ({
-          id: String(item.id),
-          name: String(item.name || item.id),
-          localId: String(item.localId || ""),
-          set: { name: String(item.setName || "") },
-          lang: "pt",
-          stockQuantity: Number(item.quantity) || 0
-        }));
-        renderStockCatalog();
-
-        // Enriquece as cartas com imagens e metadados em segundo plano.
-        state.stockCards.forEach(async (base, index) => {
-          try {
-            const detail = await Promise.race([
-              getCardDetails(base),
-              new Promise(resolve => setTimeout(() => resolve(base), 5000))
-            ]);
-            state.stockCards[index] = {
-              ...base,
-              ...detail,
-              id: base.id,
-              name: detail.name || base.name,
-              localId: detail.localId || base.localId,
-              set: detail.set || base.set,
-              stockQuantity: base.stockQuantity
-            };
-            renderStockCatalog();
-          } catch (err) {
-            // Mantém os dados textuais da planilha mesmo se a API falhar.
-          }
-        });
-      } else {
-        state.stockReady = false;
-        $("withdraw-results").innerHTML = '<div class="empty-state">Não foi possível carregar o estoque. Atualize a página ou tente novamente mais tarde.</div>';
-      }
-      return;
-    }
     if (data.requestId !== state.requestId) return;
     clearTimeout(state.submitTimer);
     submitButton.disabled = false;
