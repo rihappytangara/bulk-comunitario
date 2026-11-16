@@ -2,7 +2,7 @@
   "use strict";
   const cfg = window.BULK_CONFIG || {};
   const API = "https://api.tcgdex.net/v2/";
-  const state = { withdraw: [], deposit: [], searchTimers: {}, requestId: null, submitTimer: null };
+  const state = { withdraw: [], deposit: [], searchTimers: {}, requestId: null, submitTimer: null, stockRequestId: null, stockReady: false, stockById: new Map() };
   const $ = (id) => document.getElementById(id);
 
   const form = $("movement-form");
@@ -134,7 +134,7 @@
     [...container.querySelectorAll("[data-add]")].forEach(button => {
       button.addEventListener("click", async () => {
         const card = await getCardDetails(cards[Number(button.dataset.add)]);
-        addCard(type, card);
+        if (!addCard(type, card)) return;
         $(type + "-name-search").value = "";
         $(type + "-collection-search").value = "";
         $(type + "-number-search").value = "";
@@ -157,7 +157,14 @@
       if (name && name.length < 2 && !collection && !number) { target.innerHTML = ""; return; }
       target.innerHTML = '<div class="empty-state">Pesquisando no catálogo Pokémon...</div>';
       state.searchTimers[type] = setTimeout(async () => {
-        try { renderResults(type, await searchCards(name, collection, number)); }
+        try {
+          let cards = await searchCards(name, collection, number);
+          if (type === "withdraw") {
+            if (!state.stockReady) { target.innerHTML = '<div class="empty-state">Consultando disponibilidade do estoque...</div>'; return; }
+            cards = cards.filter(card => (state.stockById.get(String(card.id)) || 0) > 0);
+          }
+          renderResults(type, cards);
+        }
         catch { target.innerHTML = '<div class="empty-state">Não foi possível consultar o catálogo agora. Tente novamente.</div>'; }
       }, 350);
     };
@@ -169,12 +176,18 @@
   function addCard(type, card) {
     const list = state[type];
     const existing = list.find(item => item.id === card.id);
+    if (type === "withdraw") {
+      const available = state.stockById.get(String(card.id)) || 0;
+      if (!state.stockReady || available <= 0) { showMessage("Esta carta não possui unidades disponíveis no estoque."); return false; }
+      if ((existing ? existing.quantity : 0) >= available) { showMessage("Quantidade disponível para esta carta: " + available + "."); return false; }
+    }
     if (existing) existing.quantity += 1;
     else list.push({
       id: card.id, name: card.name, localId: card.localId || "",
       setName: cardSetLabel(card), image: cardImage(card), quantity: 1
     });
     renderSelected(type);
+    return true;
   }
 
   function total(type) { return state[type].reduce((sum, item) => sum + item.quantity, 0); }
@@ -205,7 +218,13 @@
         const index = Number(button.dataset.index);
         const action = button.dataset.action;
         if (action === "minus") list[index].quantity -= 1;
-        if (action === "plus") list[index].quantity += 1;
+        if (action === "plus") {
+          if (type === "withdraw") {
+            const available = state.stockById.get(String(list[index].id)) || 0;
+            if (list[index].quantity >= available) { showMessage("Quantidade disponível para esta carta: " + available + "."); return; }
+          }
+          list[index].quantity += 1;
+        }
         if (action === "remove" || list[index].quantity <= 0) list.splice(index, 1);
         if (type === "withdraw" && total(type) > (cfg.WEEKLY_LIMIT || 7)) {
           list[index].quantity -= 1;
@@ -218,8 +237,16 @@
     if (type === "withdraw") $("withdraw-count").textContent = total(type);
   }
 
+  function loadPublicStock() {
+    state.stockRequestId = "stock-" + Date.now();
+    $("transport-payload").value = JSON.stringify({ action: "stock", requestId: state.stockRequestId });
+    $("transport-form").action = cfg.APPS_SCRIPT_URL;
+    $("transport-form").submit();
+  }
+
   setupSearch("withdraw");
   setupSearch("deposit");
+  loadPublicStock();
 
   function collectPayload() {
     return {
@@ -271,7 +298,19 @@
 
   window.addEventListener("message", event => {
     const data = event.data;
-    if (!data || data.type !== "BULK_MOVEMENT_RESPONSE" || data.requestId !== state.requestId) return;
+    if (!data || data.type !== "BULK_MOVEMENT_RESPONSE") return;
+    if (state.stockRequestId && data.requestId === state.stockRequestId) {
+      state.stockRequestId = null;
+      if (data.ok && Array.isArray(data.stock)) {
+        state.stockById = new Map(data.stock.map(item => [String(item.id), Number(item.quantity) || 0]));
+        state.stockReady = true;
+      } else {
+        state.stockReady = false;
+        $("withdraw-results").innerHTML = '<div class="empty-state">Não foi possível carregar o estoque. Atualize a página ou tente novamente mais tarde.</div>';
+      }
+      return;
+    }
+    if (data.requestId !== state.requestId) return;
     clearTimeout(state.submitTimer);
     submitButton.disabled = false;
     submitButton.querySelector("span").textContent = "Registrar movimentação";
