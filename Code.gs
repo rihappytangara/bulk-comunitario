@@ -33,7 +33,7 @@ function configureAdminPassword(){
 }
 function doPost(e){
  let p={};try{p=JSON.parse((e&&e.parameter&&e.parameter.payload)||"{}");let r;
- switch(p.action||"register"){case"register":r=registerMovement_(p);break;case"login":r=adminLogin_(p);break;case"list":r=adminList_(p);break;case"approve":r=adminApprove_(p);break;case"reject":r=adminReject_(p);break;default:throw new Error("Ação inválida.");}
+ switch(p.action||"register"){case"register":r=registerMovement_(p);break;case"login":r=adminLogin_(p);break;case"list":r=adminList_(p);break;case"stock":r=publicStock_();break;case"approve":r=adminApprove_(p);break;case"reject":r=adminReject_(p);break;default:throw new Error("Ação inválida.");}
  return responseHtml_(Object.assign({requestId:p.requestId||""},r));
  }catch(err){return responseHtml_({ok:false,requestId:p.requestId||"",message:err.message||"Erro inesperado."});}
 }
@@ -66,6 +66,19 @@ function adminLogin_(p){
  return{ok:true,token,expiresIn:21600};
 }
 function requireAdmin_(token){if(!token||CacheService.getScriptCache().get("bulk_admin_"+token)!=="1")throw new Error("Sessão expirada. Entre novamente.");}
+function publicStock_(){
+ const ss=getSpreadsheet_(),sh=ss.getSheetByName("Estoque");
+ if(!sh)throw new Error("A aba Estoque não foi encontrada.");
+ const last=sh.getLastRow();if(last<=1)return{ok:true,stock:[]};
+ const rows=sh.getRange(2,1,last-1,6).getValues(),byId=new Map();
+ rows.forEach(r=>{
+  const id=String(r[0]||"").trim(),qty=Math.max(0,Number(r[4])||0);
+  if(!id)return;
+  const item=byId.get(id)||{id,name:String(r[1]||""),setName:String(r[2]||""),localId:String(r[3]||""),quantity:0};
+  item.quantity+=qty;byId.set(id,item);
+ });
+ return{ok:true,stock:Array.from(byId.values()).filter(x=>x.quantity>0)};
+}
 function adminList_(p){
  requireAdmin_(p.token);const ss=getSpreadsheet_(),m=ss.getSheetByName("Movimentações"),d=ss.getSheetByName("Detalhes"),s=ss.getSheetByName("Estoque");
  const mv=m.getLastRow()>1?m.getRange(2,1,m.getLastRow()-1,9).getValues():[];
