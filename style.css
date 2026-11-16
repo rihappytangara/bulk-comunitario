@@ -67,3 +67,24 @@ input::placeholder{color:#a0adb8}
 
 .card-search-grid{grid-template-columns:1fr 1fr .85fr}
 @media(max-width:600px){.card-search-grid{grid-template-columns:1fr}}
+
+
+/* Catálogo visual do estoque disponível */
+.stock-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 12px}
+.stock-heading h3{font-size:15px;margin:0 0 3px}.stock-heading p{font-size:11px;color:var(--muted);margin:0}
+.stock-view-toggle{display:flex;gap:4px;background:#eef3f7;border-radius:10px;padding:3px;flex-shrink:0}
+.stock-view-toggle button{border:0;background:transparent;border-radius:7px;padding:7px 9px;font:inherit;font-size:11px;font-weight:800;color:#647482;cursor:pointer}
+.stock-view-toggle button.active{background:#fff;color:var(--blue-dark);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.stock-catalog{margin:0 0 18px}
+.stock-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:10px}
+.stock-card{display:flex;flex-direction:column;align-items:center;text-align:center;border:1px solid var(--line);border-radius:12px;padding:10px 8px;background:#fff;min-width:0}
+.stock-card img{width:100%;height:150px;object-fit:contain;margin-bottom:7px}
+.stock-card strong{font-size:12px;line-height:1.25}.stock-card small{font-size:10px;color:var(--muted);margin:4px 0;line-height:1.3}
+.stock-quantity{font-size:10px;font-weight:900;color:var(--green);margin:3px 0 8px}
+.stock-card .add-button{width:100%;padding:8px 6px}
+.stock-list{display:grid;gap:6px}
+.stock-list-item{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:10px}
+.stock-list-info{flex:1;min-width:0}.stock-list-info strong{display:block;font-size:12px}.stock-list-info small{display:block;font-size:10px;color:var(--muted)}
+.stock-search-divider{display:flex;align-items:center;gap:10px;color:#84919b;font-size:10px;margin:16px 0}
+.stock-search-divider:before,.stock-search-divider:after{content:"";height:1px;background:var(--line);flex:1}
+@media(max-width:480px){.stock-heading{align-items:flex-start;flex-direction:column}.stock-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.stock-card img{height:140px}}
