@@ -58,6 +58,33 @@
       <div class="section-heading movement-title">
         <span class="step">02</span>
         <div>
+          <h2>Cartas que estou deixando</h2>
+          <p>Registre as cartas que você está colocando no Bulk Comunitário. Não há limite de entrada.</p>
+        </div>
+      </div>
+      <div class="search-wrap">
+        <div class="form-grid card-search-grid">
+          <label class="field">
+            <span>Nome da carta</span>
+            <input id="deposit-name-search" type="search" autocomplete="off" placeholder="Ex.: Bulbasaur, Energia, Treinador..." aria-label="Nome da carta para deixar">
+          </label>
+          <label class="field">
+            <span>Nome da coleção</span>
+            <input id="deposit-collection-search" type="search" autocomplete="off" placeholder="Ex.: Escarlate e Violeta" aria-label="Coleção da carta">
+          </label>
+          <label class="field">
+            <span>Número da carta</span>
+            <input id="deposit-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para deixar">
+          </label>
+        </div>
+        <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
+        <div id="deposit-results" class="search-results" aria-live="polite"></div>
+      </div>
+      <div id="deposit-selected" class="selected-list empty-state">Nenhuma carta selecionada para entrada.</div>
+
+      <div class="section-heading movement-title">
+        <span class="step">03</span>
+        <div>
           <h2>Cartas que estou retirando</h2>
           <p>Pesquise pelo nome do Pokémon ou da carta. O limite semanal é de 7 unidades.</p>
         </div>
@@ -70,10 +97,14 @@
         <div class="limit-number"><span id="withdraw-count">0</span><small>/ 7</small></div>
       </div>
       <div class="search-wrap">
-        <div class="form-grid">
+        <div class="form-grid card-search-grid">
           <label class="field">
             <span>Nome da carta</span>
             <input id="withdraw-name-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard..." aria-label="Nome da carta para retirar">
+          </label>
+          <label class="field">
+            <span>Nome da coleção</span>
+            <input id="withdraw-collection-search" type="search" autocomplete="off" placeholder="Ex.: Escarlate e Violeta" aria-label="Coleção da carta">
           </label>
           <label class="field">
             <span>Número da carta</span>
@@ -84,29 +115,6 @@
         <div id="withdraw-results" class="search-results" aria-live="polite"></div>
       </div>
       <div id="withdraw-selected" class="selected-list empty-state">Nenhuma carta selecionada para retirada.</div>
-
-      <div class="section-heading movement-title">
-        <span class="step">03</span>
-        <div>
-          <h2>Cartas que estou deixando</h2>
-          <p>Registre as cartas que você está colocando no Bulk Comunitário. Não há limite de entrada.</p>
-        </div>
-      </div>
-      <div class="search-wrap">
-        <div class="form-grid">
-          <label class="field">
-            <span>Nome da carta</span>
-            <input id="deposit-name-search" type="search" autocomplete="off" placeholder="Ex.: Bulbasaur, Energia, Treinador..." aria-label="Nome da carta para deixar">
-          </label>
-          <label class="field">
-            <span>Número da carta</span>
-            <input id="deposit-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para deixar">
-          </label>
-        </div>
-        <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
-        <div id="deposit-results" class="search-results" aria-live="polite"></div>
-      </div>
-      <div id="deposit-selected" class="selected-list empty-state">Nenhuma carta selecionada para entrada.</div>
 
       <div class="declaration">
         <label class="check-row">
