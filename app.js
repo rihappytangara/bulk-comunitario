@@ -280,6 +280,15 @@
     $("transport-form").submit();
   }
 
+  const searchToggle = $("toggle-withdraw-search");
+  searchToggle.addEventListener("click", () => {
+    const panel = $("withdraw-search-panel");
+    const opening = panel.hidden;
+    panel.hidden = !opening;
+    searchToggle.setAttribute("aria-expanded", String(opening));
+    searchToggle.textContent = opening ? "Fechar pesquisa" : "Pesquisar carta específica";
+  });
+
   setupSearch("withdraw");
   setupSearch("deposit");
   loadPublicStock();
@@ -332,7 +341,7 @@
     }, 30000);
   });
 
-  window.addEventListener("message", event => {
+  window.addEventListener("message", async event => {
     const data = event.data;
     if (!data || data.type !== "BULK_MOVEMENT_RESPONSE") return;
     if (state.stockRequestId && data.requestId === state.stockRequestId) {
