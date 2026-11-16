@@ -31,6 +31,15 @@ function configureAdminPassword(){
  PropertiesService.getScriptProperties().setProperty(CONFIG.ADMIN_HASH,sha256_(password));
  Logger.log("Senha administrativa configurada. Remova a senha literal do código e salve.");
 }
+function doGet(e){
+ const p=e&&e.parameter?e.parameter:{};
+ if(p.action!=="stock")return ContentService.createTextOutput("Bulk Comunitário API").setMimeType(ContentService.MimeType.TEXT);
+ const callback=String(p.callback||"");
+ if(!/^bulkStockCallback$/.test(callback))return ContentService.createTextOutput("Callback inválido").setMimeType(ContentService.MimeType.TEXT);
+ let result;
+ try{result=publicStock_();}catch(err){result={ok:false,message:err.message||"Erro ao consultar estoque.",stock:[]};}
+ return ContentService.createTextOutput(callback+"("+JSON.stringify(result).replace(/</g,"\\u003c")+");").setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
 function doPost(e){
  let p={};try{p=JSON.parse((e&&e.parameter&&e.parameter.payload)||"{}");let r;
  switch(p.action||"register"){case"register":r=registerMovement_(p);break;case"login":r=adminLogin_(p);break;case"list":r=adminList_(p);break;case"stock":r=publicStock_();break;case"approve":r=adminApprove_(p);break;case"reject":r=adminReject_(p);break;default:throw new Error("Ação inválida.");}
