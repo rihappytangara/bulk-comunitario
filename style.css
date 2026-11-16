@@ -64,3 +64,6 @@ input::placeholder{color:#a0adb8}
 
 
 .search-hint { display:block; margin:8px 0 12px; color:#687383; font-size:.82rem; line-height:1.4; }
+
+.card-search-grid{grid-template-columns:1fr 1fr .85fr}
+@media(max-width:600px){.card-search-grid{grid-template-columns:1fr}}
