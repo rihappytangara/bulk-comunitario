@@ -2,7 +2,7 @@
   "use strict";
   const cfg = window.BULK_CONFIG || {};
   const API = "https://api.tcgdex.net/v2/";
-  const state = { withdraw: [], deposit: [], searchTimers: {}, requestId: null, submitTimer: null, stockRequestId: null, stockReady: false, stockById: new Map() };
+  const state = { withdraw: [], deposit: [], searchTimers: {}, requestId: null, submitTimer: null, stockRequestId: null, stockReady: false, stockById: new Map(), stockCards: [], stockView: "grid" };
   const $ = (id) => document.getElementById(id);
 
   const form = $("movement-form");
@@ -237,6 +237,42 @@
     if (type === "withdraw") $("withdraw-count").textContent = total(type);
   }
 
+  function renderStockCatalog() {
+    const container = $("withdraw-stock-catalog");
+    if (!container || !state.stockReady) return;
+    const cards = state.stockCards;
+    if (!cards.length) {
+      container.innerHTML = '<div class="empty-state">Não há cartas disponíveis para retirada no momento.</div>';
+      return;
+    }
+    if (state.stockView === "list") {
+      container.innerHTML = '<div class="stock-list">' + cards.map((card, i) => `
+        <div class="stock-list-item">
+          <div class="stock-list-info"><strong>${escapeHtml(card.name)}</strong><small>${escapeHtml(card.set?.name || "Coleção não informada")} · nº ${escapeHtml(card.localId || "—")} · Disponíveis: ${card.stockQuantity}</small></div>
+          <button class="add-button" type="button" data-stock-add="${i}">Adicionar</button>
+        </div>`).join("") + "</div>";
+    } else {
+      container.innerHTML = '<div class="stock-grid">' + cards.map((card, i) => `
+        <article class="stock-card">
+          <img src="${escapeHtml(cardImage(card))}" alt="Carta ${escapeHtml(card.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
+          <strong>${escapeHtml(card.name)}</strong>
+          <small>${escapeHtml(card.set?.name || "Coleção não informada")} · nº ${escapeHtml(card.localId || "—")}</small>
+          <span class="stock-quantity">${card.stockQuantity} disponível(is)</span>
+          <button class="add-button" type="button" data-stock-add="${i}">Adicionar</button>
+        </article>`).join("") + "</div>";
+    }
+    container.querySelectorAll("[data-stock-add]").forEach(button => button.addEventListener("click", () => {
+      const card = cards[Number(button.dataset.stockAdd)];
+      addCard("withdraw", card);
+    }));
+  }
+
+  document.querySelectorAll("[data-stock-view]").forEach(button => button.addEventListener("click", () => {
+    state.stockView = button.dataset.stockView;
+    document.querySelectorAll("[data-stock-view]").forEach(item => item.classList.toggle("active", item === button));
+    renderStockCatalog();
+  }));
+
   function loadPublicStock() {
     state.stockRequestId = "stock-" + Date.now();
     $("transport-payload").value = JSON.stringify({ action: "stock", requestId: state.stockRequestId });
@@ -304,6 +340,12 @@
       if (data.ok && Array.isArray(data.stock)) {
         state.stockById = new Map(data.stock.map(item => [String(item.id), Number(item.quantity) || 0]));
         state.stockReady = true;
+        state.stockCards = await Promise.all(data.stock.map(async item => {
+          const base = { id: String(item.id), name: item.name, localId: item.localId || "", set: { name: item.setName || "" }, lang: "pt" };
+          const detail = await getCardDetails(base);
+          return { ...base, ...detail, id: String(item.id), name: detail.name || item.name, localId: detail.localId || item.localId || "", set: detail.set || base.set, stockQuantity: Number(item.quantity) || 0 };
+        }));
+        renderStockCatalog();
       } else {
         state.stockReady = false;
         $("withdraw-results").innerHTML = '<div class="empty-state">Não foi possível carregar o estoque. Atualize a página ou tente novamente mais tarde.</div>';
