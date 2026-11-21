@@ -26,9 +26,9 @@
   function escapeHtml(value) {
     return String(value ?? "").replace(/[&<>"']/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[ch]));
   }
-  function cardImage(card) {
+  function cardImage(card, quality = "high") {
     if (!card.image) return "";
-    return card.image.endsWith(".webp") ? card.image : `${card.image}/high.webp`;
+    return card.image.endsWith(".webp") ? card.image : `${card.image}/${quality}.webp`;
   }
   function cardSetLabel(card) {
     return card.set?.name || card.set?.id || "Coleção não informada";
@@ -103,6 +103,26 @@
       } catch (err) { /* tenta o próximo idioma */ }
     }
     return [];
+  }
+
+  /* Cache dos detalhes no aparelho (30 dias): visitas seguintes abrem quase instantâneas. */
+  const CACHE_PREFIX = "bulk_card_v1_";
+  const CACHE_DAYS = 30;
+  function readCardCache(id) {
+    try {
+      const raw = localStorage.getItem(CACHE_PREFIX + id);
+      if (!raw) return null;
+      const item = JSON.parse(raw);
+      if (Date.now() - item.t > CACHE_DAYS * 864e5) return null;
+      return item.d;
+    } catch (err) { return null; }
+  }
+  function writeCardCache(id, card) {
+    try {
+      const d = { id: card.id, name: card.name, localId: card.localId, image: card.image,
+        category: card.category, types: card.types, set: card.set ? { id: card.set.id, name: card.set.name } : undefined };
+      localStorage.setItem(CACHE_PREFIX + id, JSON.stringify({ t: Date.now(), d }));
+    } catch (err) { /* armazenamento cheio ou bloqueado: segue sem cache */ }
   }
 
   async function getCardDetails(card) {
@@ -295,6 +315,7 @@
     box.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => {
       state.typeFilter = button.dataset.type;
       $("withdraw-stock-catalog").scrollTop = 0;
+      resetRenderLimit();
       renderStockCatalog();
     }));
   }
@@ -319,10 +340,12 @@
   }
   ["withdraw-name-search", "withdraw-number-search"].forEach(id => $(id).addEventListener("input", () => {
     $("withdraw-stock-catalog").scrollTop = 0;
+    resetRenderLimit();
     renderStockCatalog();
   }));
   $("withdraw-collection-search").addEventListener("change", () => {
     $("withdraw-stock-catalog").scrollTop = 0;
+    resetRenderLimit();
     renderStockCatalog();
   });
   $("clear-stock-filters").addEventListener("click", () => {
@@ -330,6 +353,7 @@
     $("withdraw-number-search").value = "";
     $("withdraw-collection-search").value = "";
     state.typeFilter = "";
+    resetRenderLimit();
     renderStockCatalog();
   });
 
@@ -344,6 +368,17 @@
 
   // Agrupa várias atualizações (ex.: imagens chegando) em uma única renderização.
   let stockRenderQueued = false;
+  const PAGE_SIZE = 36;
+  state.renderLimit = PAGE_SIZE;
+  function resetRenderLimit() { state.renderLimit = PAGE_SIZE; }
+
+  // Durante o carregamento dos detalhes, redesenha no máximo a cada 1,2 s.
+  let throttledTimer = null;
+  function scheduleThrottledRender() {
+    if (throttledTimer) return;
+    throttledTimer = setTimeout(() => { throttledTimer = null; renderStockCatalog(); }, 1200);
+  }
+
   function scheduleStockRender() {
     if (stockRenderQueued) return;
     stockRenderQueued = true;
@@ -354,7 +389,7 @@
     const container = $("withdraw-stock-catalog");
     if (!container || !state.stockReady) return;
     const all = state.stockCards;
-    const cards = filteredStockCards();
+    let cards = filteredStockCards();
     const f = stockFilters();
     const filtering = Boolean(f.name || f.collection || f.number || state.typeFilter);
     renderTypeChips();
@@ -373,23 +408,42 @@
       return;
     }
     const scroll = container.scrollTop;
-    if (state.stockView === "list") {
+    const total = cards.length;
+    const listMode = state.stockView === "list";
+    const limit = listMode ? state.renderLimit * 3 : state.renderLimit; // a lista em texto é mais leve
+    const remaining = Math.max(0, total - limit);
+    const moreButton = remaining
+      ? `<button type="button" class="secondary-button load-more" data-load-more>Mostrar mais cartas (${remaining} restantes)</button>`
+      : "";
+    cards = cards.slice(0, limit);
+    if (listMode) {
       container.innerHTML = '<div class="stock-list">' + cards.map(card => `
         <div class="stock-list-item">
           <div class="stock-list-info"><strong>${escapeHtml(card.name)}</strong><small>${escapeHtml(card.set?.name || "Coleção não informada")} · nº ${escapeHtml(card.localId || "—")} · Disponíveis: ${card.stockQuantity}</small></div>
           ${stockButton(card)}
-        </div>`).join("") + "</div>";
+        </div>`).join("") + "</div>" + moreButton;
     } else {
       container.innerHTML = '<div class="stock-grid">' + cards.map(card => `
         <article class="stock-card">
-          <img src="${escapeHtml(cardImage(card))}" alt="Carta ${escapeHtml(card.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
+          <img src="${escapeHtml(cardImage(card, "low"))}" alt="Carta ${escapeHtml(card.name)}" loading="lazy" decoding="async" onerror="this.style.visibility='hidden'">
           <strong>${escapeHtml(card.name)}</strong>
           <small>${escapeHtml(card.set?.name || "Coleção não informada")} · nº ${escapeHtml(card.localId || "—")}</small>
           <span class="stock-quantity">${card.stockQuantity} disponível(is)</span>
           ${stockButton(card)}
-        </article>`).join("") + "</div>";
+        </article>`).join("") + "</div>" + moreButton;
     }
     container.scrollTop = scroll;
+    const more = container.querySelector("[data-load-more]");
+    if (more) {
+      more.addEventListener("click", () => { state.renderLimit += PAGE_SIZE; renderStockCatalog(); });
+      // Carrega o próximo bloco sozinho quando o botão aparece na rolagem.
+      if ("IntersectionObserver" in window) {
+        const io = new IntersectionObserver(entries => {
+          if (entries.some(entry => entry.isIntersecting)) { io.disconnect(); state.renderLimit += PAGE_SIZE; renderStockCatalog(); }
+        }, { root: container, rootMargin: "200px" });
+        io.observe(more);
+      }
+    }
     container.querySelectorAll("[data-stock-add]").forEach(button => button.addEventListener("click", () => {
       const card = state.stockCards.find(item => item.id === button.dataset.stockAdd);
       if (card) addCard("withdraw", card);
@@ -460,12 +514,7 @@
       // Os detalhes e imagens são complementares. A lista básica da planilha
       // aparece primeiro e não depende da TCGdex para funcionar.
       const loadingList = state.stockCards;
-      loadingList.forEach(async (base, index) => {
-        try {
-          const detail = await Promise.race([
-            getCardDetails(base),
-            new Promise(resolve => setTimeout(() => resolve(base), 4500))
-          ]);
+      const applyDetail = (base, index, detail) => {
           if (state.stockCards !== loadingList) return; // o estoque foi recarregado
           state.stockCards[index] = {
             ...base,
@@ -479,14 +528,41 @@
             typeLabel: cardTypeLabel(detail),
             detailDone: true
           };
-          scheduleStockRender();
-        } catch (err) {
-          // Mantém o registro básico da planilha.
-          if (state.stockCards !== loadingList) return;
-          state.stockCards[index] = { ...state.stockCards[index], detailDone: true };
-          scheduleStockRender();
-        }
+      };
+
+      // Primeiro aplica o que já está guardado no aparelho (visitas anteriores).
+      const queue = [];
+      loadingList.forEach((base, index) => {
+        const cached = readCardCache(base.id);
+        if (cached) applyDetail(base, index, cached);
+        else queue.push(index);
       });
+      renderStockCatalog();
+
+      // Depois busca o restante na TCGdex, poucas consultas por vez (leve para Android).
+      const WORKERS = 8;
+      const worker = async () => {
+        while (queue.length && state.stockCards === loadingList) {
+          const index = queue.shift();
+          const base = loadingList[index];
+          try {
+            const detail = await Promise.race([
+              getCardDetails(base),
+              new Promise(resolve => setTimeout(() => resolve(null), 12000))
+            ]);
+            if (detail && detail !== base && detail.name) {
+              writeCardCache(base.id, detail);
+              applyDetail(base, index, detail);
+            } else if (state.stockCards === loadingList) {
+              state.stockCards[index] = { ...state.stockCards[index], detailDone: true };
+            }
+          } catch (err) {
+            if (state.stockCards === loadingList) state.stockCards[index] = { ...state.stockCards[index], detailDone: true };
+          }
+          scheduleThrottledRender();
+        }
+      };
+      for (let i = 0; i < WORKERS; i++) worker();
     } else {
       state.stockReady = false;
       $("withdraw-stock-catalog").innerHTML = '<div class="empty-state">Não foi possível ler os dados do estoque. Atualize a página e tente novamente.</div>';
