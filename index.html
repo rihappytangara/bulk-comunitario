@@ -87,7 +87,7 @@
         <span class="step">03</span>
         <div>
           <h2>Cartas que estou retirando</h2>
-          <p>Escolha no estoque ou pesquise uma carta específica. O limite semanal é de 7 unidades.</p>
+          <p>Escolha no estoque abaixo. Use os filtros para encontrar mais rápido. O limite semanal é de 7 unidades.</p>
         </div>
       </div>
       <div class="limit-panel">
@@ -100,7 +100,7 @@
       <div class="stock-heading">
         <div>
           <h3>Cartas disponíveis para retirada</h3>
-          <p>Veja o que está disponível no estoque e selecione diretamente.</p>
+          <p>Toque em Adicionar nas cartas que deseja retirar.</p>
         </div>
         <div class="stock-view-toggle" role="group" aria-label="Modo de visualização do estoque">
           <button type="button" class="active" data-stock-view="grid">Miniaturas</button>
@@ -108,33 +108,32 @@
         </div>
       </div>
 
-      <button type="button" id="toggle-withdraw-search" class="secondary-button stock-search-toggle" aria-expanded="false" aria-controls="withdraw-search-panel">Pesquisar carta específica</button>
-      <div id="withdraw-search-panel" class="withdraw-search-panel" hidden>
-        <div class="search-wrap">
-          <div class="form-grid card-search-grid">
-            <label class="field">
-              <span>Nome da carta</span>
-              <input id="withdraw-name-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard..." aria-label="Nome da carta para retirar">
-            </label>
-            <label class="field">
-              <span>Nome da coleção</span>
-              <input id="withdraw-collection-search" type="search" autocomplete="off" placeholder="Ex.: Escarlate e Violeta" aria-label="Coleção da carta">
-            </label>
-            <label class="field">
-              <span>Número da carta</span>
-              <input id="withdraw-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para retirar">
-            </label>
-          </div>
-          <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
-          <div id="withdraw-results" class="search-results" aria-live="polite"></div>
-        </div>
+      <div class="stock-filters" role="search" aria-label="Filtrar cartas do estoque">
+        <label class="field filter-name">
+          <span>Nome da carta</span>
+          <input id="withdraw-name-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu">
+        </label>
+        <label class="field filter-collection">
+          <span>Coleção</span>
+          <select id="withdraw-collection-search">
+            <option value="">Todas as coleções</option>
+          </select>
+        </label>
+        <label class="field filter-number">
+          <span>Número</span>
+          <input id="withdraw-number-search" type="search" autocomplete="off" inputmode="text" placeholder="Ex.: 025">
+        </label>
+      </div>
+      <div class="filter-status">
+        <span id="stock-filter-count">—</span>
+        <button type="button" id="clear-stock-filters" class="link-button" hidden>Limpar filtros</button>
       </div>
 
-      <div id="withdraw-stock-catalog" class="stock-catalog" aria-live="polite">
+      <div id="withdraw-stock-catalog" class="stock-catalog" aria-live="polite" tabindex="0" aria-label="Cartas disponíveis (rolagem própria)">
         <div class="empty-state">Carregando cartas disponíveis...</div>
       </div>
 
-      <h3 class="selected-title">Cartas escolhidas para retirada</h3>
+      <h3 id="review-anchor" class="selected-title">Cartas escolhidas para retirada</h3>
       <div id="withdraw-selected" class="selected-list empty-state">Nenhuma carta selecionada para retirada.</div>
 
       <div class="declaration">
@@ -171,6 +170,14 @@
       <p>Catálogo de cartas fornecido pela TCGdex. Projeto comunitário independente, sem afiliação com Nintendo ou The Pokémon Company.</p>
     </footer>
   </main>
+
+  <div id="action-bar" class="action-bar" hidden>
+    <div class="action-bar-info">
+      <strong><span id="bar-withdraw">0</span>/7 para retirar</strong>
+      <small><span id="bar-deposit">0</span> para deixar</small>
+    </div>
+    <button type="button" id="go-to-submit" class="action-bar-button">Revisar e enviar ↓</button>
+  </div>
 
   <iframe name="submission-frame" id="submission-frame" title="Envio de movimentação" class="hidden-frame"></iframe>
   <form id="transport-form" method="post" target="submission-frame" class="hidden-form">

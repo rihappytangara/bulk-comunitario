@@ -57,7 +57,7 @@ button{touch-action:manipulation}
 .field{display:flex;flex-direction:column;gap:6px;min-width:0}
 .field>span{font-size:13px;font-weight:800;color:#435768}
 /* 16px nos campos evita o zoom automático do iPhone ao tocar */
-input[type=text],input[type=tel],input[type=search],input[type=password],input:not([type]){
+input[type=text],input[type=tel],input[type=search],input[type=password],input:not([type]),select{
   width:100%;height:48px;border:1px solid #d1dce5;border-radius:11px;padding:0 13px;
   font:inherit;font-size:16px;color:var(--ink);outline:none;background:#fff;-webkit-appearance:none;appearance:none
 }
@@ -66,9 +66,8 @@ input::placeholder{color:#9aa8b4}
 .search-hint{display:block;margin:8px 0 10px;color:#687383;font-size:12px;line-height:1.4}
 .card-search-grid{grid-template-columns:1fr}
 
-/* ---------- Contador de retirada (fica visível ao rolar) ---------- */
+/* ---------- Contador de retirada ---------- */
 .limit-panel{
-  position:sticky;top:70px;z-index:10;
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   background:#f0f7fc;border:1px solid #d6e8f6;border-radius:12px;padding:10px 14px;margin:0 0 16px;
   box-shadow:0 4px 12px rgba(24,58,82,.06)
@@ -142,13 +141,40 @@ input::placeholder{color:#9aa8b4}
 .stock-view-toggle button{min-height:40px;border:1px solid transparent;background:transparent;border-radius:8px;padding:8px 11px;font:inherit;font-size:13px;font-weight:800;color:#647482;cursor:pointer}
 .stock-view-toggle button.active{background:#fff;color:#075da0;border-color:#d5e4f1;box-shadow:0 1px 4px rgba(0,0,0,.08)}
 
-/* Pesquisa específica: fica logo acima da lista de cartas */
-.stock-search-toggle{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0 0 10px;border-color:#cbddeb;color:#075da0}
-.stock-search-toggle::before{content:"⌕";font-size:18px;line-height:1}
-.withdraw-search-panel{background:#f7fafc;border:1px solid var(--line);border-radius:12px;padding:12px;margin:0 0 12px}
-#withdraw-search-panel[hidden]{display:none!important}
+/* Filtros do estoque: ficam logo acima da lista de cartas */
+select{padding-right:36px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23657786' stroke-width='2' fill='none'/%3E%3C/svg%3E") no-repeat right 13px center;text-overflow:ellipsis}
+.stock-filters{display:grid;grid-template-columns:1fr 92px;gap:8px;background:#f7fafc;border:1px solid var(--line);border-radius:12px;padding:10px}
+.stock-filters .field>span{font-size:12px}
+.filter-name{grid-column:1/2}.filter-number{grid-column:2/3}.filter-collection{grid-column:1/-1;grid-row:2}
+.filter-status{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:34px;margin:6px 2px 6px;font-size:12px;color:var(--muted);font-weight:700}
+.link-button{border:0;background:none;color:var(--blue-dark);font:inherit;font-size:13px;font-weight:800;padding:8px 0 8px 8px;cursor:pointer;text-decoration:underline}
 
-.stock-catalog{margin:0}
+/* Catálogo com rolagem própria: a página não cresce com o estoque */
+.stock-catalog{
+  margin:0;max-height:62vh;max-height:62dvh;overflow-y:auto;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;
+  border:1px solid var(--line);border-radius:12px;padding:8px;background:#f9fbfd;
+  box-shadow:inset 0 -14px 14px -14px rgba(24,58,82,.25)
+}
+.stock-catalog:focus-visible{outline:3px solid rgba(8,120,201,.3)}
+.add-button.added{background:#e8f7ef;color:var(--green)}
+.add-button:disabled{opacity:.7;cursor:default}
+
+/* Barra fixa para ir direto ao envio */
+.action-bar{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px max(14px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(14px,env(safe-area-inset-left));
+  background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 20px rgba(24,58,82,.12)
+}
+.action-bar[hidden]{display:none}
+.action-bar-info strong{display:block;font-size:15px;color:var(--ink)}
+.action-bar-info small{display:block;font-size:12px;color:var(--muted)}
+.action-bar.full .action-bar-info strong{color:var(--green)}
+.action-bar-button{min-height:46px;border:0;border-radius:11px;background:var(--blue);color:#fff;font:inherit;font-size:15px;font-weight:900;padding:10px 16px;cursor:pointer;white-space:nowrap}
+.action-bar.full .action-bar-button{background:var(--green);animation:pulse 1.6s ease-in-out 2}
+@keyframes pulse{50%{transform:scale(1.05)}}
+body.has-action-bar{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+.selected-title{scroll-margin-top:76px}
 .stock-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .stock-card{display:flex;flex-direction:column;align-items:center;text-align:center;border:1px solid var(--line);border-radius:12px;padding:8px;background:#fff;min-width:0}
 .stock-card img{width:100%;aspect-ratio:63/88;height:auto;object-fit:contain;margin-bottom:6px;border-radius:6px;background:#f4f6f8}
@@ -179,10 +205,14 @@ input::placeholder{color:#9aa8b4}
   .intro-symbol{font-size:90px;padding:0 18px}
   .form-grid{grid-template-columns:1fr 1fr;gap:14px}
   .card-search-grid{grid-template-columns:1fr 1fr .85fr}
-  .limit-panel{top:90px}
   .stock-heading{flex-direction:row;align-items:center;justify-content:space-between}
   .stock-view-toggle{display:flex;flex-shrink:0}
   .stock-grid{grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+  .stock-filters{grid-template-columns:1.2fr 1.2fr .7fr;gap:10px;padding:12px}
+  .filter-name,.filter-collection,.filter-number{grid-column:auto;grid-row:auto}
+  .stock-catalog{max-height:560px}
+  .action-bar{left:50%;right:auto;bottom:16px;transform:translateX(-50%);width:min(100% - 28px,560px);border:1px solid var(--line);border-radius:16px;padding:10px 12px 10px 18px}
+  body.has-action-bar{padding-bottom:96px}
   .success-panel .secondary-button{width:auto}
 }
 @media (hover:hover){

@@ -180,6 +180,7 @@
       const available = state.stockById.get(String(card.id)) || 0;
       if (!state.stockReady || available <= 0) { showMessage("Esta carta não possui unidades disponíveis no estoque."); return false; }
       if ((existing ? existing.quantity : 0) >= available) { showMessage("Quantidade disponível para esta carta: " + available + "."); return false; }
+      if (total("withdraw") >= (cfg.WEEKLY_LIMIT || 7)) { showMessage("Você já escolheu 7 cartas para retirar. Toque em Revisar e enviar para concluir."); return false; }
     }
     if (existing) existing.quantity += 1;
     else list.push({
@@ -234,37 +235,144 @@
         renderSelected(type);
       }));
     }
-    if (type === "withdraw") $("withdraw-count").textContent = total(type);
+    if (type === "withdraw") {
+      $("withdraw-count").textContent = total(type);
+      scheduleStockRender();
+    }
+    updateActionBar();
+  }
+
+  /* ---------- Filtros locais do estoque ---------- */
+  function plain(value) {
+    return String(value || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
+  }
+  function stockFilters() {
+    return {
+      name: plain($("withdraw-name-search").value),
+      collection: $("withdraw-collection-search").value,
+      number: normalizeLocalId($("withdraw-number-search").value)
+    };
+  }
+  function filteredStockCards() {
+    const f = stockFilters();
+    return state.stockCards.filter(card =>
+      (!f.name || plain(card.name).includes(f.name)) &&
+      (!f.collection || card.sheetSetName === f.collection) &&
+      (!f.number || normalizeLocalId(card.localId).startsWith(f.number))
+    );
+  }
+  function fillCollectionFilter() {
+    const select = $("withdraw-collection-search");
+    const current = select.value;
+    const names = [...new Set(state.stockCards.map(card => card.sheetSetName).filter(Boolean))]
+      .sort((a, b) => a.localeCompare(b, "pt-BR"));
+    select.innerHTML = '<option value="">Todas as coleções</option>' +
+      names.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join("");
+    if (names.includes(current)) select.value = current;
+  }
+  ["withdraw-name-search", "withdraw-number-search"].forEach(id => $(id).addEventListener("input", () => {
+    $("withdraw-stock-catalog").scrollTop = 0;
+    renderStockCatalog();
+  }));
+  $("withdraw-collection-search").addEventListener("change", () => {
+    $("withdraw-stock-catalog").scrollTop = 0;
+    renderStockCatalog();
+  });
+  $("clear-stock-filters").addEventListener("click", () => {
+    $("withdraw-name-search").value = "";
+    $("withdraw-number-search").value = "";
+    $("withdraw-collection-search").value = "";
+    renderStockCatalog();
+  });
+
+  function stockButton(card) {
+    const chosen = (state.withdraw.find(item => item.id === card.id) || {}).quantity || 0;
+    const full = total("withdraw") >= (cfg.WEEKLY_LIMIT || 7);
+    if (chosen >= card.stockQuantity) return `<button class="add-button added" type="button" disabled>✓ Na lista (${chosen})</button>`;
+    if (full) return `<button class="add-button" type="button" disabled>Limite atingido</button>`;
+    if (chosen) return `<button class="add-button added" type="button" data-stock-add="${escapeHtml(card.id)}">✓ ${chosen} · Adicionar +1</button>`;
+    return `<button class="add-button" type="button" data-stock-add="${escapeHtml(card.id)}">Adicionar</button>`;
+  }
+
+  // Agrupa várias atualizações (ex.: imagens chegando) em uma única renderização.
+  let stockRenderQueued = false;
+  function scheduleStockRender() {
+    if (stockRenderQueued) return;
+    stockRenderQueued = true;
+    requestAnimationFrame(() => { stockRenderQueued = false; renderStockCatalog(); });
   }
 
   function renderStockCatalog() {
     const container = $("withdraw-stock-catalog");
     if (!container || !state.stockReady) return;
-    const cards = state.stockCards;
-    if (!cards.length) {
+    const all = state.stockCards;
+    const cards = filteredStockCards();
+    const f = stockFilters();
+    const filtering = Boolean(f.name || f.collection || f.number);
+    $("clear-stock-filters").hidden = !filtering;
+    $("stock-filter-count").textContent = filtering
+      ? `Mostrando ${cards.length} de ${all.length} carta(s)`
+      : `${all.length} carta(s) disponível(is)`;
+
+    if (!all.length) {
       container.innerHTML = '<div class="empty-state">Não há cartas disponíveis para retirada no momento.</div>';
       return;
     }
+    if (!cards.length) {
+      container.innerHTML = '<div class="empty-state">Nenhuma carta do estoque corresponde aos filtros.</div>';
+      return;
+    }
+    const scroll = container.scrollTop;
     if (state.stockView === "list") {
-      container.innerHTML = '<div class="stock-list">' + cards.map((card, i) => `
+      container.innerHTML = '<div class="stock-list">' + cards.map(card => `
         <div class="stock-list-item">
           <div class="stock-list-info"><strong>${escapeHtml(card.name)}</strong><small>${escapeHtml(card.set?.name || "Coleção não informada")} · nº ${escapeHtml(card.localId || "—")} · Disponíveis: ${card.stockQuantity}</small></div>
-          <button class="add-button" type="button" data-stock-add="${i}">Adicionar</button>
+          ${stockButton(card)}
         </div>`).join("") + "</div>";
     } else {
-      container.innerHTML = '<div class="stock-grid">' + cards.map((card, i) => `
+      container.innerHTML = '<div class="stock-grid">' + cards.map(card => `
         <article class="stock-card">
           <img src="${escapeHtml(cardImage(card))}" alt="Carta ${escapeHtml(card.name)}" loading="lazy" onerror="this.style.visibility='hidden'">
           <strong>${escapeHtml(card.name)}</strong>
           <small>${escapeHtml(card.set?.name || "Coleção não informada")} · nº ${escapeHtml(card.localId || "—")}</small>
           <span class="stock-quantity">${card.stockQuantity} disponível(is)</span>
-          <button class="add-button" type="button" data-stock-add="${i}">Adicionar</button>
+          ${stockButton(card)}
         </article>`).join("") + "</div>";
     }
+    container.scrollTop = scroll;
     container.querySelectorAll("[data-stock-add]").forEach(button => button.addEventListener("click", () => {
-      const card = cards[Number(button.dataset.stockAdd)];
-      addCard("withdraw", card);
+      const card = state.stockCards.find(item => item.id === button.dataset.stockAdd);
+      if (card) addCard("withdraw", card);
     }));
+  }
+
+  /* ---------- Barra fixa "Revisar e enviar" ---------- */
+  let submitAreaVisible = false;
+  function updateActionBar() {
+    const bar = $("action-bar");
+    const out = total("withdraw");
+    const inn = total("deposit");
+    $("bar-withdraw").textContent = out;
+    $("bar-deposit").textContent = inn;
+    bar.classList.toggle("full", out >= (cfg.WEEKLY_LIMIT || 7));
+    const show = (out + inn) > 0 && !form.hidden && !submitAreaVisible;
+    bar.hidden = !show;
+    document.body.classList.toggle("has-action-bar", show);
+  }
+  $("go-to-submit").addEventListener("click", () => {
+    // 1º toque: leva à revisão das cartas. Se já estiver nela, leva à declaração/envio.
+    const reviewTop = $("review-anchor").getBoundingClientRect().top;
+    if (reviewTop < window.innerHeight * 0.35) {
+      document.querySelector(".declaration").scrollIntoView({ behavior: "smooth", block: "center" });
+    } else {
+      $("review-anchor").scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(entries => {
+      submitAreaVisible = entries.some(entry => entry.isIntersecting);
+      updateActionBar();
+    }).observe(document.querySelector(".form-footer"));
   }
 
   document.querySelectorAll("[data-stock-view]").forEach(button => button.addEventListener("click", () => {
@@ -292,9 +400,11 @@
         name: String(item.name || item.id),
         localId: String(item.localId || ""),
         set: { name: String(item.setName || "") },
+        sheetSetName: String(item.setName || "").trim(),
         lang: "pt",
         stockQuantity: Number(item.quantity) || 0
       }));
+      fillCollectionFilter();
       renderStockCatalog();
 
       // Os detalhes e imagens são complementares. A lista básica da planilha
@@ -312,9 +422,10 @@
             name: detail.name || base.name,
             localId: detail.localId || base.localId,
             set: detail.set || base.set,
+            sheetSetName: base.sheetSetName,
             stockQuantity: base.stockQuantity
           };
-          renderStockCatalog();
+          scheduleStockRender();
         } catch (err) {
           // Mantém o registro básico da planilha.
         }
@@ -378,16 +489,6 @@
     }
   }
 
-  const searchToggle = $("toggle-withdraw-search");
-  searchToggle.addEventListener("click", () => {
-    const panel = $("withdraw-search-panel");
-    const opening = panel.hidden;
-    panel.hidden = !opening;
-    searchToggle.setAttribute("aria-expanded", String(opening));
-    searchToggle.textContent = opening ? "Fechar pesquisa" : "Pesquisar carta específica";
-  });
-
-  setupSearch("withdraw");
   setupSearch("deposit");
   loadPublicStock();
 
@@ -450,6 +551,7 @@
       $("protocol-number").textContent = data.protocol || "Registrado";
       form.hidden = true;
       $("success-panel").hidden = false;
+      updateActionBar();
       window.scrollTo({top:0,behavior:"smooth"});
     } else {
       showMessage(data.message || "Não foi possível registrar. Confira os dados e tente novamente.");
@@ -460,10 +562,11 @@
     form.reset();
     state.withdraw = []; state.deposit = []; state.requestId = null;
     renderSelected("withdraw"); renderSelected("deposit");
-    $("withdraw-results").innerHTML = ""; $("deposit-results").innerHTML = "";
+    $("deposit-results").innerHTML = "";
     $("withdraw-name-search").value = ""; $("withdraw-collection-search").value = ""; $("withdraw-number-search").value = "";
     $("deposit-name-search").value = ""; $("deposit-collection-search").value = ""; $("deposit-number-search").value = "";
     $("success-panel").hidden = true; form.hidden = false; showMessage("");
+    updateActionBar(); loadPublicStock(); // recarrega: a solicitação anterior reservou cartas
     window.scrollTo({top:0,behavior:"smooth"});
   });
 })();
