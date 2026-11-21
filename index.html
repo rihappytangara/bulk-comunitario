@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0878c9">
   <title>Bulk Comunitário | Ri Happy Tangará</title>
   <link rel="stylesheet" href="style.css">
@@ -80,13 +80,14 @@
         <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
         <div id="deposit-results" class="search-results" aria-live="polite"></div>
       </div>
+      <h3 class="selected-title">Cartas escolhidas para deixar</h3>
       <div id="deposit-selected" class="selected-list empty-state">Nenhuma carta selecionada para entrada.</div>
 
       <div class="section-heading movement-title">
         <span class="step">03</span>
         <div>
           <h2>Cartas que estou retirando</h2>
-          <p>Pesquise pelo nome do Pokémon ou da carta. O limite semanal é de 7 unidades.</p>
+          <p>Escolha no estoque ou pesquise uma carta específica. O limite semanal é de 7 unidades.</p>
         </div>
       </div>
       <div class="limit-panel">
@@ -106,32 +107,36 @@
           <button type="button" data-stock-view="list">Lista em texto</button>
         </div>
       </div>
+
+      <button type="button" id="toggle-withdraw-search" class="secondary-button stock-search-toggle" aria-expanded="false" aria-controls="withdraw-search-panel">Pesquisar carta específica</button>
+      <div id="withdraw-search-panel" class="withdraw-search-panel" hidden>
+        <div class="search-wrap">
+          <div class="form-grid card-search-grid">
+            <label class="field">
+              <span>Nome da carta</span>
+              <input id="withdraw-name-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard..." aria-label="Nome da carta para retirar">
+            </label>
+            <label class="field">
+              <span>Nome da coleção</span>
+              <input id="withdraw-collection-search" type="search" autocomplete="off" placeholder="Ex.: Escarlate e Violeta" aria-label="Coleção da carta">
+            </label>
+            <label class="field">
+              <span>Número da carta</span>
+              <input id="withdraw-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para retirar">
+            </label>
+          </div>
+          <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
+          <div id="withdraw-results" class="search-results" aria-live="polite"></div>
+        </div>
+      </div>
+
       <div id="withdraw-stock-catalog" class="stock-catalog" aria-live="polite">
         <div class="empty-state">Carregando cartas disponíveis...</div>
       </div>
-           <button type="button" id="toggle-withdraw-search" class="secondary-button stock-search-toggle" aria-expanded="false">Pesquisar carta específica</button>
-      <div id="withdraw-search-panel" hidden>
-      <div class="stock-search-divider"><span>Pesquisa no catálogo Pokémon</span></div>
-      <div class="search-wrap">
-        <div class="form-grid card-search-grid">
-          <label class="field">
-            <span>Nome da carta</span>
-            <input id="withdraw-name-search" type="search" autocomplete="off" placeholder="Ex.: Pikachu, Charizard..." aria-label="Nome da carta para retirar">
-          </label>
-          <label class="field">
-            <span>Nome da coleção</span>
-            <input id="withdraw-collection-search" type="search" autocomplete="off" placeholder="Ex.: Escarlate e Violeta" aria-label="Coleção da carta">
-          </label>
-          <label class="field">
-            <span>Número da carta</span>
-            <input id="withdraw-number-search" type="search" autocomplete="off" placeholder="Ex.: 025/198 ou SWSH020" aria-label="Número da carta para retirar">
-          </label>
-        </div>
-        <small class="search-hint">Preencha um campo ou combine nome e número. Cartas promocionais sem barra também são aceitas.</small>
-        <div id="withdraw-results" class="search-results" aria-live="polite"></div>
-      </div>
+
+      <h3 class="selected-title">Cartas escolhidas para retirada</h3>
       <div id="withdraw-selected" class="selected-list empty-state">Nenhuma carta selecionada para retirada.</div>
-      </div>
+
       <div class="declaration">
         <label class="check-row">
           <input id="declaration" type="checkbox" required>
