@@ -26,8 +26,8 @@ const ORG_CONFIG = {
 
 // Tipos na ordem em que aparecem nas coleções
 const ORG_TYPES = {
-  Grass: "Planta", Fire: "Fogo", Water: "Água", Lightning: "Elétrico", Psychic: "Psíquico",
-  Fighting: "Lutador", Darkness: "Escuridão", Metal: "Metal", Fairy: "Fada", Dragon: "Dragão",
+  Grass: "Planta", Fire: "Fogo", Water: "Água", Lightning: "Raio", Psychic: "Psíquico",
+  Fighting: "Lutador", Darkness: "Sombrio", Metal: "Metal", Fairy: "Fada", Dragon: "Dragão",
   Colorless: "Incolor"
 };
 
@@ -147,8 +147,8 @@ function fetchSetTypes_(setId, started) {
 }
 
 function cardLabel_(card) {
-  if (card.category === "Trainer") return "Treinadores";
-  if (card.category === "Energy") return "Energias";
+  if (card.category === "Trainer") return "Treinador";
+  if (card.category === "Energy") return "Energia";
   const type = card.types && card.types[0];
   return ORG_TYPES[type] || type || "Não identificado";
 }

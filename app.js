@@ -253,12 +253,59 @@
       number: normalizeLocalId($("withdraw-number-search").value)
     };
   }
+  /* ---------- Filtro por tipo ---------- */
+  // A TCGdex devolve os tipos em português (pt) ou inglês (en); tudo vira o rótulo em português.
+  const TYPE_ORDER = ["Planta", "Fogo", "Água", "Raio", "Psíquico", "Lutador", "Sombrio", "Incolor", "Dragão", "Metal", "Fada", "Treinador", "Energia"];
+  const TYPE_ALIASES = {
+    grass: "Planta", planta: "Planta", fire: "Fogo", fogo: "Fogo", water: "Água", agua: "Água",
+    lightning: "Raio", eletrico: "Raio", raio: "Raio", psychic: "Psíquico", psiquico: "Psíquico",
+    fighting: "Lutador", lutador: "Lutador", luta: "Lutador", darkness: "Sombrio", escuridao: "Sombrio", sombrio: "Sombrio",
+    metal: "Metal", fairy: "Fada", fada: "Fada", dragon: "Dragão", dragao: "Dragão", colorless: "Incolor", incolor: "Incolor"
+  };
+  const TYPE_ICONS = { Planta: "🌿", Fogo: "🔥", "Água": "💧", "Raio": "⚡", "Psíquico": "🔮", Lutador: "👊", "Sombrio": "🌑", Metal: "⚙️", Fada: "✨", "Dragão": "🐉", Incolor: "⭐", Treinador: "🧑", Energia: "🔋" };
+  state.typeFilter = "";
+
+  function cardTypeLabel(card) {
+    const category = plain(card.category);
+    if (category.startsWith("trainer") || category.startsWith("treinador")) return "Treinador";
+    if (category.startsWith("energ")) return "Energia";
+    const type = Array.isArray(card.types) ? card.types[0] : "";
+    return type ? (TYPE_ALIASES[plain(type)] || type) : "";
+  }
+
+  function renderTypeChips() {
+    const box = $("type-chips");
+    const counts = new Map();
+    let identified = 0;
+    state.stockCards.forEach(card => {
+      if (!card.typeLabel) return;
+      identified++;
+      counts.set(card.typeLabel, (counts.get(card.typeLabel) || 0) + 1);
+    });
+    const labels = [...counts.keys()].sort((a, b) => {
+      const ia = TYPE_ORDER.indexOf(a), ib = TYPE_ORDER.indexOf(b);
+      return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib);
+    });
+    if (state.typeFilter && !counts.has(state.typeFilter)) labels.push(state.typeFilter);
+    const loading = state.stockCards.some(card => !card.detailDone);
+    box.innerHTML =
+      `<button type="button" class="type-chip${state.typeFilter ? "" : " active"}" data-type="">Todos</button>` +
+      labels.map(label => `<button type="button" class="type-chip type-${escapeHtml(plain(label))}${state.typeFilter === label ? " active" : ""}" data-type="${escapeHtml(label)}">${TYPE_ICONS[label] || ""} ${escapeHtml(label)} <small>${counts.get(label) || 0}</small></button>`).join("") +
+      (loading ? '<span class="type-loading">Identificando tipos…</span>' : "");
+    box.querySelectorAll("[data-type]").forEach(button => button.addEventListener("click", () => {
+      state.typeFilter = button.dataset.type;
+      $("withdraw-stock-catalog").scrollTop = 0;
+      renderStockCatalog();
+    }));
+  }
+
   function filteredStockCards() {
     const f = stockFilters();
     return state.stockCards.filter(card =>
       (!f.name || plain(card.name).includes(f.name)) &&
       (!f.collection || card.sheetSetName === f.collection) &&
-      (!f.number || normalizeLocalId(card.localId).startsWith(f.number))
+      (!f.number || normalizeLocalId(card.localId).startsWith(f.number)) &&
+      (!state.typeFilter || card.typeLabel === state.typeFilter)
     );
   }
   function fillCollectionFilter() {
@@ -282,6 +329,7 @@
     $("withdraw-name-search").value = "";
     $("withdraw-number-search").value = "";
     $("withdraw-collection-search").value = "";
+    state.typeFilter = "";
     renderStockCatalog();
   });
 
@@ -308,7 +356,8 @@
     const all = state.stockCards;
     const cards = filteredStockCards();
     const f = stockFilters();
-    const filtering = Boolean(f.name || f.collection || f.number);
+    const filtering = Boolean(f.name || f.collection || f.number || state.typeFilter);
+    renderTypeChips();
     $("clear-stock-filters").hidden = !filtering;
     $("stock-filter-count").textContent = filtering
       ? `Mostrando ${cards.length} de ${all.length} carta(s)`
@@ -319,7 +368,8 @@
       return;
     }
     if (!cards.length) {
-      container.innerHTML = '<div class="empty-state">Nenhuma carta do estoque corresponde aos filtros.</div>';
+      const waiting = state.typeFilter && state.stockCards.some(card => !card.detailDone);
+      container.innerHTML = '<div class="empty-state">' + (waiting ? "Identificando os tipos das cartas… aguarde alguns segundos." : "Nenhuma carta do estoque corresponde aos filtros.") + "</div>";
       return;
     }
     const scroll = container.scrollTop;
@@ -409,12 +459,14 @@
 
       // Os detalhes e imagens são complementares. A lista básica da planilha
       // aparece primeiro e não depende da TCGdex para funcionar.
-      state.stockCards.forEach(async (base, index) => {
+      const loadingList = state.stockCards;
+      loadingList.forEach(async (base, index) => {
         try {
           const detail = await Promise.race([
             getCardDetails(base),
             new Promise(resolve => setTimeout(() => resolve(base), 4500))
           ]);
+          if (state.stockCards !== loadingList) return; // o estoque foi recarregado
           state.stockCards[index] = {
             ...base,
             ...detail,
@@ -423,11 +475,16 @@
             localId: detail.localId || base.localId,
             set: detail.set || base.set,
             sheetSetName: base.sheetSetName,
-            stockQuantity: base.stockQuantity
+            stockQuantity: base.stockQuantity,
+            typeLabel: cardTypeLabel(detail),
+            detailDone: true
           };
           scheduleStockRender();
         } catch (err) {
           // Mantém o registro básico da planilha.
+          if (state.stockCards !== loadingList) return;
+          state.stockCards[index] = { ...state.stockCards[index], detailDone: true };
+          scheduleStockRender();
         }
       });
     } else {
