@@ -116,6 +116,9 @@ function registerMovement_(p) {
   if (!requestId || name.length < 3 || phone.length < 10 || !p.declaration || (!out && !inn) || out > CONFIG.WEEKLY_LIMIT) {
     throw new Error("Confira os dados, a declaração e o limite de 7 cartas retiradas.");
   }
+  if (out > inn) {
+    throw new Error("Para retirar " + out + " carta(s) é preciso deixar pelo menos a mesma quantidade. Faltam " + (out - inn) + ".");
+  }
 
   const lock = LockService.getScriptLock();
   lock.waitLock(20000);

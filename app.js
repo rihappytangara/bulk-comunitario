@@ -458,7 +458,12 @@
     const inn = total("deposit");
     $("bar-withdraw").textContent = out;
     $("bar-deposit").textContent = inn;
-    bar.classList.toggle("full", out >= (cfg.WEEKLY_LIMIT || 7));
+    bar.classList.toggle("full", out >= (cfg.WEEKLY_LIMIT || 7) && inn >= out);
+    const missing = Math.max(0, out - inn);
+    bar.classList.toggle("missing", missing > 0);
+    $("bar-deposit").parentElement.innerHTML = missing
+      ? `<span id="bar-deposit">${inn}</span> para deixar · faltam ${missing}`
+      : `<span id="bar-deposit">${inn}</span> para deixar`;
     const show = (out + inn) > 0 && !form.hidden && !submitAreaVisible;
     bar.hidden = !show;
     document.body.classList.toggle("has-action-bar", show);
@@ -641,7 +646,9 @@
     if (p.name.length < 3) return "Informe seu nome completo.";
     if (p.phone.length < 10) return "Informe um telefone válido com DDD.";
     if (!p.withdrawals.length && !p.deposits.length) return "Adicione pelo menos uma carta para registrar a movimentação.";
-    if (p.withdrawals.reduce((s,c)=>s+c.quantity,0) > 7) return "Você pode selecionar no máximo 7 cartas para retirar nesta movimentação.";
+    const out = p.withdrawals.reduce((s,c)=>s+c.quantity,0), inn = p.deposits.reduce((s,c)=>s+c.quantity,0);
+    if (out > 7) return "Você pode selecionar no máximo 7 cartas para retirar nesta movimentação.";
+    if (out > inn) return "Para retirar " + out + " carta(s), você precisa deixar pelo menos " + out + ". Faltam " + (out - inn) + " carta(s) em \"Cartas que estou deixando\".";
     if (!p.declaration) return "É necessário confirmar a declaração sobre a qualidade das cartas.";
     if (!cfg.APPS_SCRIPT_URL || cfg.APPS_SCRIPT_URL.includes("COLE_AQUI")) return "O site ainda não foi conectado ao Google Apps Script. Consulte o arquivo README.";
     return "";

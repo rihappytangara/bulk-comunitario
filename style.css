@@ -337,3 +337,4 @@ input:focus,select:focus{border-color:var(--royal);box-shadow:0 0 0 3px rgba(42,
 }
 .add-button:disabled:not(.added){background:#e4e8f0;color:#7a8699}
 .load-more{display:block;width:100%;margin-top:10px;background:#fff}
+.action-bar.missing .action-bar-info small{color:var(--ember);font-weight:800}
